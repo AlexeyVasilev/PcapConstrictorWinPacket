@@ -14,7 +14,7 @@ if(WIN32 AND NPCAP_SDK_DIR)
 endif()
 
 option(PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING
-    "Enable Npcap/libpcap-backed interface discovery"
+    "Enable Npcap/libpcap-backed interface discovery and basic live capture"
     ${PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING_DEFAULT})
 
 set(PCAP_CONSTRICTOR_WINPACKET_HAS_NPCAP 0)
@@ -28,9 +28,9 @@ if(PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING)
     if(NOT NPCAP_SDK_DIR)
         message(WARNING
             "NPCAP_SDK_DIR is not set, so Npcap interface listing will be disabled for this build. "
-            "Provide -DNPCAP_SDK_DIR=... to enable --list-interfaces.")
+            "Provide -DNPCAP_SDK_DIR=... to enable --list-interfaces and live capture.")
         set(PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING OFF CACHE BOOL
-            "Enable Npcap/libpcap-backed interface discovery" FORCE)
+            "Enable Npcap/libpcap-backed interface discovery and basic live capture" FORCE)
     endif()
 endif()
 
@@ -59,7 +59,7 @@ if(PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING)
 endif()
 
 add_library(PcapConstrictorWinPacketCore STATIC
-    src/capture/NpcapInterfaceList.cpp
+    src/capture/NpcapInterfaceListFormatting.cpp
     src/config/ConfigLoader.cpp
     src/decode/PacketDecode.cpp
     src/offline/OfflinePacketFeed.cpp
@@ -81,22 +81,29 @@ target_compile_definitions(PcapConstrictorWinPacketCore
         PCAP_CONSTRICTOR_WINPACKET_HAS_NPCAP=${PCAP_CONSTRICTOR_WINPACKET_HAS_NPCAP}
 )
 
+add_executable(PcapConstrictorWinPacket
+    src/main.cpp
+    src/capture/NpcapCapture.cpp
+    src/capture/NpcapInterfaceList.cpp
+)
+
+target_compile_definitions(PcapConstrictorWinPacket
+    PRIVATE
+        PCAP_CONSTRICTOR_WINPACKET_HAS_NPCAP=${PCAP_CONSTRICTOR_WINPACKET_HAS_NPCAP}
+)
+
 if(PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING)
-    target_include_directories(PcapConstrictorWinPacketCore
+    target_include_directories(PcapConstrictorWinPacket
         PRIVATE
             ${NPCAP_INCLUDE_DIR}
     )
-    target_link_libraries(PcapConstrictorWinPacketCore
-        PUBLIC
+    target_link_libraries(PcapConstrictorWinPacket
+        PRIVATE
             ${NPCAP_WPCAP_LIB}
             ${NPCAP_PACKET_LIB}
             Ws2_32
     )
 endif()
-
-add_executable(PcapConstrictorWinPacket
-    src/main.cpp
-)
 
 target_link_libraries(PcapConstrictorWinPacket
     PRIVATE

@@ -9,14 +9,13 @@ Current scope:
 - independent `PcapConstrictorWinPacket` repository and targets
 - offline PCAP compatibility pipeline only
 - Npcap/libpcap interface discovery
+- basic Npcap/libpcap live capture via `pcap_open_live`
 - copied/adapted TLS, QUIC, decode, writer, reader, and live-policy core
 - byte-for-byte golden tests for `final_only` compatibility behavior
 - standalone minimal C++ tests with no external test framework
 
 Current non-goals:
 
-- Npcap live capture
-- Npcap SDK dependency
 - WFP, NDIS, driver, service, or low-level `Packet.dll` code
 - pcapng output
 - TLS stream or bulk continuation policies
@@ -36,9 +35,9 @@ For this milestone:
 
 - `--offline-input` runs the deterministic offline pipeline:
   `input.pcap -> PcapReader -> OfflinePacketFeed -> LiveCapturePolicy -> PcapWriter -> output.pcap`
-- `--config config.ini` without `--offline-input` prints a clear message that Npcap live capture is not implemented yet and returns non-zero.
+- `--config config.ini` runs the first basic Npcap live capture path when Npcap support is compiled in.
 - `--list-interfaces` enumerates interfaces via the Npcap/libpcap API.
-- Live packet capture is still not implemented.
+- Live capture currently uses the simplest `pcap_open_live` + `pcap_next_ex` backend.
 
 Example:
 
@@ -50,6 +49,8 @@ PcapConstrictorWinPacket --list-interfaces
   description: Ethernet
   addresses: 192.168.1.10, fe80::...
   flags: up, running
+
+PcapConstrictorWinPacket --config config.ini
 ```
 
 ## Config
@@ -71,13 +72,14 @@ duration_sec = 0
 read_timeout_ms = 100
 ```
 
-Copy the reported `name:` value into `interface =` when preparing for future live capture milestones.
+Copy the reported `name:` value into `interface =`. Npcap interface names typically look like
+`\Device\NPF_{GUID}`.
 
 TLS currently keeps `app_data_continuation_policy = final_only` only. `stream` and `bulk` remain recognized but unsupported. Offline tests do not require Npcap.
 
 ## Build Notes
 
-`--list-interfaces` uses the Npcap/libpcap SDK. A simple CMake setup is supported via `NPCAP_SDK_DIR`.
+`--list-interfaces` and live capture use the Npcap/libpcap SDK. A simple CMake setup is supported via `NPCAP_SDK_DIR`.
 
 Example:
 
@@ -86,7 +88,7 @@ cmake -S . -B build -DNPCAP_SDK_DIR="C:/path/to/Npcap-SDK"
 ```
 
 If `NPCAP_SDK_DIR` is not provided, the project falls back to an offline-only build and
-`--list-interfaces` will report that Npcap interface listing is unavailable in that build.
+`--list-interfaces` and live capture will report that Npcap support is unavailable in that build.
 
 This milestone expects:
 
@@ -103,17 +105,22 @@ cmake -S . -B build -DPCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING=
 ## Known Limitations
 
 - Windows-oriented project structure
-- no live capture yet
 - classic PCAP output only
 - no pcapng
 - no custom Windows driver
 - no WFP/NDIS kernel filtering
 - no `Packet.dll` low-level backend
+- live capture currently uses only the simplest `pcap_open_live` backend
+- live capture currently supports only Ethernet `DLT_EN10MB`
+- unsupported linktypes fail clearly
+- no BPF filtering yet
 - no TLS/QUIC decryption
 - TLS `final_only` only
 - TLS stream/bulk unsupported
 - QUIC no migration support
 - malformed or ambiguous packets fall back conservatively
+- Npcap installation and runtime DLL availability may be required to run live features
+- administrator rights may be required depending on the Npcap installation mode and interface
 
 ## Testing
 

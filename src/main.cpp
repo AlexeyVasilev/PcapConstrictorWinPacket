@@ -1,7 +1,10 @@
+#include <chrono>
+#include <csignal>
 #include <filesystem>
 #include <iostream>
 #include <string_view>
 
+#include "capture/NpcapCapture.hpp"
 #include "capture/NpcapInterfaceList.hpp"
 #include "config/ConfigLoader.hpp"
 #include "offline/OfflinePacketFeed.hpp"
@@ -9,6 +12,19 @@
 
 namespace pcap_constrictor_winpacket {
 namespace {
+
+volatile std::sig_atomic_t g_stop_requested = 0;
+
+void HandleStopSignal(int) {
+    g_stop_requested = 1;
+}
+
+void InstallSignalHandlers() {
+    std::signal(SIGINT, HandleStopSignal);
+#ifdef SIGTERM
+    std::signal(SIGTERM, HandleStopSignal);
+#endif
+}
 
 void PrintUsage(std::ostream& output) {
     output << "Usage:\n"
@@ -54,10 +70,10 @@ int RunOfflinePipeline(const std::filesystem::path& input_path,
     return 0;
 }
 
-int RunPlannedLiveCaptureMessage(const PolicyConfig&) {
+int RunUnavailableLiveCaptureMessage() {
     std::cerr
-        << "Npcap live capture is not implemented yet in this milestone.\n"
-        << "Use --offline-input <input.pcap> to run the deterministic offline pipeline.\n";
+        << "Npcap live capture is unavailable in this build.\n"
+        << "Reconfigure with NPCAP_SDK_DIR to enable live capture and --list-interfaces.\n";
     return 1;
 }
 
@@ -74,6 +90,64 @@ int RunListInterfaces() {
     }
 
     std::cout << FormatNpcapInterfaceList(result.interfaces) << '\n';
+    return 0;
+}
+
+int RunLiveCapture(const PolicyConfig& config) {
+    if (!NpcapCapture::HasSupport()) {
+        return RunUnavailableLiveCaptureMessage();
+    }
+
+    if (config.capture.interface.empty()) {
+        std::cerr
+            << "Configuration error: capture.interface is required for live capture.\n"
+            << "Run PcapConstrictorWinPacket --list-interfaces and copy a name into config.ini.\n";
+        return 1;
+    }
+
+    g_stop_requested = 0;
+    InstallSignalHandlers();
+
+    std::cout << "Starting live capture.\n"
+              << "backend: npcap\n"
+              << "interface: " << config.capture.interface << '\n'
+              << "output: " << config.capture.output.string() << '\n'
+              << "promiscuous: " << (config.capture.promiscuous ? "true" : "false") << '\n'
+              << "default_snaplen: " << config.capture.default_snaplen << '\n'
+              << "max_capture_len: " << config.capture.max_capture_len << '\n'
+              << "read_timeout_ms: " << config.capture.read_timeout_ms << '\n';
+    if (config.capture.max_packets != 0U) {
+        std::cout << "max_packets: " << config.capture.max_packets << '\n';
+    }
+    if (config.capture.duration_sec != 0U) {
+        std::cout << "duration_sec: " << config.capture.duration_sec << '\n';
+    }
+    std::cout << "Press Ctrl+C to stop.\n";
+
+    NpcapCapture capture(config.capture);
+    const NpcapCaptureRunResult result =
+        capture.Run(config, config.capture.output, &g_stop_requested);
+
+    if (!result.warning.empty()) {
+        std::cerr << "Npcap warning: " << result.warning << '\n';
+    }
+
+    if (!result) {
+        std::cerr << "Live capture error: " << result.error << '\n';
+        if (config.stats.enabled &&
+            (result.stats.packets_total != 0U || result.stats.receive_errors != 0U)) {
+            std::cerr << "Partial stats:\n";
+            PrintCaptureStats(std::cerr, result.stats);
+        }
+        return 1;
+    }
+
+    std::cout << "Live capture stopped: " << result.stop_reason << '\n';
+    if (config.stats.enabled) {
+        std::cout << "elapsed_seconds: " << result.elapsed_seconds << '\n';
+        PrintCaptureStats(std::cout, result.stats);
+    }
+
     return 0;
 }
 
@@ -113,5 +187,5 @@ int main(int argc, char* argv[]) {
         return RunOfflinePipeline(argv[4], result.config);
     }
 
-    return RunPlannedLiveCaptureMessage(result.config);
+    return RunLiveCapture(result.config);
 }

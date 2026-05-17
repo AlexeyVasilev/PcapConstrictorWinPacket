@@ -30,7 +30,7 @@ int main() {
     failures += RunNpcapInterfaceListTests();
 
     if (failures == 0) {
-        std::cout << "All tests passed.\n";
+        std::cout << "All tests passed." << std::endl;
         return 0;
     }
 

@@ -1,46 +1,20 @@
 #include "capture/NpcapInterfaceList.hpp"
 
-#include <sstream>
 #include <utility>
-#include <vector>
 
 #if PCAP_CONSTRICTOR_WINPACKET_HAS_NPCAP
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
 #include <pcap.h>
+
+#ifdef interface
+#undef interface
+#endif
 #endif
 
 namespace pcap_constrictor_winpacket {
 namespace {
-
-std::string JoinStrings(const std::vector<std::string>& parts) {
-    std::ostringstream output;
-    for (std::size_t index = 0; index < parts.size(); ++index) {
-        if (index != 0U) {
-            output << ", ";
-        }
-        output << parts[index];
-    }
-    return output.str();
-}
-
-std::vector<std::string> CollectFlags(const NpcapInterfaceInfo& info) {
-    std::vector<std::string> flags;
-    if (info.is_loopback) {
-        flags.emplace_back("loopback");
-    }
-    if (info.is_up) {
-        flags.emplace_back("up");
-    }
-    if (info.is_running) {
-        flags.emplace_back("running");
-    }
-    if (info.is_wireless) {
-        flags.emplace_back("wireless");
-    }
-    return flags;
-}
 
 #if PCAP_CONSTRICTOR_WINPACKET_HAS_NPCAP
 int SockaddrLength(const sockaddr* address) {
@@ -138,35 +112,6 @@ NpcapInterfaceListResult ListNpcapInterfaces() {
         "or disable PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING for offline-only builds.";
     return result;
 #endif
-}
-
-std::string FormatNpcapInterfaceList(std::span<const NpcapInterfaceInfo> interfaces) {
-    std::ostringstream output;
-
-    for (std::size_t index = 0; index < interfaces.size(); ++index) {
-        const NpcapInterfaceInfo& info = interfaces[index];
-        output << '[' << index << "]\n"
-               << "  name: " << info.name << '\n';
-
-        if (!info.description.empty()) {
-            output << "  description: " << info.description << '\n';
-        }
-
-        if (!info.addresses.empty()) {
-            output << "  addresses: " << JoinStrings(info.addresses) << '\n';
-        }
-
-        const std::vector<std::string> flags = CollectFlags(info);
-        if (!flags.empty()) {
-            output << "  flags: " << JoinStrings(flags) << '\n';
-        }
-
-        if (index + 1U != interfaces.size()) {
-            output << '\n';
-        }
-    }
-
-    return output.str();
 }
 
 }  // namespace pcap_constrictor_winpacket
