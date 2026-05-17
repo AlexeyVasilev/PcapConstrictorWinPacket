@@ -8,7 +8,58 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(CTest)
 
+set(PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING_DEFAULT OFF)
+if(WIN32 AND NPCAP_SDK_DIR)
+    set(PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING_DEFAULT ON)
+endif()
+
+option(PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING
+    "Enable Npcap/libpcap-backed interface discovery"
+    ${PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING_DEFAULT})
+
+set(PCAP_CONSTRICTOR_WINPACKET_HAS_NPCAP 0)
+if(PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING)
+    if(NOT WIN32)
+        message(FATAL_ERROR
+            "Npcap interface listing is only supported on Windows. "
+            "Set PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING=OFF for offline-only builds.")
+    endif()
+
+    if(NOT NPCAP_SDK_DIR)
+        message(WARNING
+            "NPCAP_SDK_DIR is not set, so Npcap interface listing will be disabled for this build. "
+            "Provide -DNPCAP_SDK_DIR=... to enable --list-interfaces.")
+        set(PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING OFF CACHE BOOL
+            "Enable Npcap/libpcap-backed interface discovery" FORCE)
+    endif()
+endif()
+
+if(PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING)
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(NPCAP_LIB_DIR "${NPCAP_SDK_DIR}/Lib/x64")
+    else()
+        set(NPCAP_LIB_DIR "${NPCAP_SDK_DIR}/Lib")
+    endif()
+
+    set(NPCAP_INCLUDE_DIR "${NPCAP_SDK_DIR}/Include")
+    set(NPCAP_WPCAP_LIB "${NPCAP_LIB_DIR}/wpcap.lib")
+    set(NPCAP_PACKET_LIB "${NPCAP_LIB_DIR}/Packet.lib")
+
+    if(NOT EXISTS "${NPCAP_INCLUDE_DIR}/pcap.h")
+        message(FATAL_ERROR "Npcap header not found: ${NPCAP_INCLUDE_DIR}/pcap.h")
+    endif()
+    if(NOT EXISTS "${NPCAP_WPCAP_LIB}")
+        message(FATAL_ERROR "Npcap library not found: ${NPCAP_WPCAP_LIB}")
+    endif()
+    if(NOT EXISTS "${NPCAP_PACKET_LIB}")
+        message(FATAL_ERROR "Npcap library not found: ${NPCAP_PACKET_LIB}")
+    endif()
+
+    set(PCAP_CONSTRICTOR_WINPACKET_HAS_NPCAP 1)
+endif()
+
 add_library(PcapConstrictorWinPacketCore STATIC
+    src/capture/NpcapInterfaceList.cpp
     src/config/ConfigLoader.cpp
     src/decode/PacketDecode.cpp
     src/offline/OfflinePacketFeed.cpp
@@ -25,6 +76,23 @@ target_include_directories(PcapConstrictorWinPacketCore
 )
 
 target_compile_features(PcapConstrictorWinPacketCore PUBLIC cxx_std_20)
+target_compile_definitions(PcapConstrictorWinPacketCore
+    PUBLIC
+        PCAP_CONSTRICTOR_WINPACKET_HAS_NPCAP=${PCAP_CONSTRICTOR_WINPACKET_HAS_NPCAP}
+)
+
+if(PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING)
+    target_include_directories(PcapConstrictorWinPacketCore
+        PRIVATE
+            ${NPCAP_INCLUDE_DIR}
+    )
+    target_link_libraries(PcapConstrictorWinPacketCore
+        PUBLIC
+            ${NPCAP_WPCAP_LIB}
+            ${NPCAP_PACKET_LIB}
+            Ws2_32
+    )
+endif()
 
 add_executable(PcapConstrictorWinPacket
     src/main.cpp
@@ -42,6 +110,7 @@ add_executable(PcapConstrictorWinPacketTests
     tests/LivePolicyClassificationTests.cpp
     tests/LivePolicyQuicTests.cpp
     tests/LivePolicySmokeTests.cpp
+    tests/NpcapInterfaceListTests.cpp
     tests/OfflinePacketFeedTests.cpp
     tests/PacketDecodeTests.cpp
     tests/PcapReaderTests.cpp

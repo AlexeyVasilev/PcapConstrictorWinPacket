@@ -8,6 +8,7 @@ Current scope:
 
 - independent `PcapConstrictorWinPacket` repository and targets
 - offline PCAP compatibility pipeline only
+- Npcap/libpcap interface discovery
 - copied/adapted TLS, QUIC, decode, writer, reader, and live-policy core
 - byte-for-byte golden tests for `final_only` compatibility behavior
 - standalone minimal C++ tests with no external test framework
@@ -26,6 +27,7 @@ Supported commands:
 
 ```text
 PcapConstrictorWinPacket --help
+PcapConstrictorWinPacket --list-interfaces
 PcapConstrictorWinPacket --config config.ini
 PcapConstrictorWinPacket --config config.ini --offline-input input.pcap
 ```
@@ -35,7 +37,20 @@ For this milestone:
 - `--offline-input` runs the deterministic offline pipeline:
   `input.pcap -> PcapReader -> OfflinePacketFeed -> LiveCapturePolicy -> PcapWriter -> output.pcap`
 - `--config config.ini` without `--offline-input` prints a clear message that Npcap live capture is not implemented yet and returns non-zero.
-- `--list-interfaces` is planned, but not implemented yet.
+- `--list-interfaces` enumerates interfaces via the Npcap/libpcap API.
+- Live packet capture is still not implemented.
+
+Example:
+
+```text
+PcapConstrictorWinPacket --list-interfaces
+
+[0]
+  name: \Device\NPF_{...}
+  description: Ethernet
+  addresses: 192.168.1.10, fe80::...
+  flags: up, running
+```
 
 ## Config
 
@@ -56,7 +71,34 @@ duration_sec = 0
 read_timeout_ms = 100
 ```
 
+Copy the reported `name:` value into `interface =` when preparing for future live capture milestones.
+
 TLS currently keeps `app_data_continuation_policy = final_only` only. `stream` and `bulk` remain recognized but unsupported. Offline tests do not require Npcap.
+
+## Build Notes
+
+`--list-interfaces` uses the Npcap/libpcap SDK. A simple CMake setup is supported via `NPCAP_SDK_DIR`.
+
+Example:
+
+```text
+cmake -S . -B build -DNPCAP_SDK_DIR="C:/path/to/Npcap-SDK"
+```
+
+If `NPCAP_SDK_DIR` is not provided, the project falls back to an offline-only build and
+`--list-interfaces` will report that Npcap interface listing is unavailable in that build.
+
+This milestone expects:
+
+- `${NPCAP_SDK_DIR}/Include/pcap.h`
+- `${NPCAP_SDK_DIR}/Lib/x64/wpcap.lib` for 64-bit builds, or `${NPCAP_SDK_DIR}/Lib/wpcap.lib` otherwise
+- matching `Packet.lib`
+
+If you only want the offline pipeline, you can disable interface-listing support at configure time:
+
+```text
+cmake -S . -B build -DPCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING=OFF
+```
 
 ## Known Limitations
 

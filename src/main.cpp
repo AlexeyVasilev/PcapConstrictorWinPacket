@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string_view>
 
+#include "capture/NpcapInterfaceList.hpp"
 #include "config/ConfigLoader.hpp"
 #include "offline/OfflinePacketFeed.hpp"
 #include "stats/CaptureStats.hpp"
@@ -11,6 +12,7 @@ namespace {
 
 void PrintUsage(std::ostream& output) {
     output << "Usage:\n"
+           << "  PcapConstrictorWinPacket --list-interfaces\n"
            << "  PcapConstrictorWinPacket --config <config.ini>\n"
            << "  PcapConstrictorWinPacket --config <config.ini> --offline-input <input.pcap>\n"
            << "  PcapConstrictorWinPacket --help\n";
@@ -59,6 +61,22 @@ int RunPlannedLiveCaptureMessage(const PolicyConfig&) {
     return 1;
 }
 
+int RunListInterfaces() {
+    const NpcapInterfaceListResult result = ListNpcapInterfaces();
+    if (!result) {
+        std::cerr << "Npcap interface listing error: " << result.error << '\n';
+        return 1;
+    }
+
+    if (result.interfaces.empty()) {
+        std::cout << "Npcap reported no capture interfaces.\n";
+        return 0;
+    }
+
+    std::cout << FormatNpcapInterfaceList(result.interfaces) << '\n';
+    return 0;
+}
+
 }  // namespace
 }  // namespace pcap_constrictor_winpacket
 
@@ -68,6 +86,9 @@ int main(int argc, char* argv[]) {
     if (argc == 2 && std::string_view(argv[1]) == "--help") {
         PrintUsage(std::cout);
         return 0;
+    }
+    if (argc == 2 && std::string_view(argv[1]) == "--list-interfaces") {
+        return RunListInterfaces();
     }
 
     const bool config_only =
