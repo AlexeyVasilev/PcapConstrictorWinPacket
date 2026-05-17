@@ -1,10 +1,11 @@
 #pragma once
 
-#include <csignal>
+#include <atomic>
 #include <filesystem>
 #include <string>
 #include <string_view>
 
+#include "capture/LiveCaptureReporting.hpp"
 #include "policy/PolicyConfig.hpp"
 #include "stats/CaptureStats.hpp"
 
@@ -14,7 +15,7 @@ struct NpcapCaptureRunResult {
     CaptureStats stats{};
     std::string error{};
     std::string warning{};
-    std::string stop_reason{"stopped"};
+    LiveCaptureTerminationReason termination_reason{LiveCaptureTerminationReason::Stopped};
     double elapsed_seconds{0.0};
 
     [[nodiscard]] bool ok() const noexcept {
@@ -34,7 +35,7 @@ public:
     [[nodiscard]] NpcapCaptureRunResult Run(
         const PolicyConfig& policy_config,
         const std::filesystem::path& output_path,
-        volatile std::sig_atomic_t* stop_requested = nullptr) const;
+        std::atomic_bool* stop_requested = nullptr) const;
 
 private:
     PolicyConfig::CaptureOptions config_;

@@ -1,28 +1,53 @@
-#include <chrono>
-#include <csignal>
+#include <atomic>
 #include <filesystem>
 #include <iostream>
 #include <string_view>
 
+#include "capture/LiveCaptureReporting.hpp"
 #include "capture/NpcapCapture.hpp"
 #include "capture/NpcapInterfaceList.hpp"
 #include "config/ConfigLoader.hpp"
 #include "offline/OfflinePacketFeed.hpp"
 #include "stats/CaptureStats.hpp"
 
+#ifdef _WIN32
+#include <windows.h>
+
+#ifdef interface
+#undef interface
+#endif
+#else
+#include <csignal>
+#endif
+
 namespace pcap_constrictor_winpacket {
 namespace {
 
-volatile std::sig_atomic_t g_stop_requested = 0;
+std::atomic_bool g_stop_requested{false};
 
-void HandleStopSignal(int) {
-    g_stop_requested = 1;
+#ifdef _WIN32
+BOOL WINAPI HandleConsoleCtrl(DWORD control_type) {
+    if (control_type == CTRL_C_EVENT || control_type == CTRL_BREAK_EVENT) {
+        g_stop_requested.store(true, std::memory_order_relaxed);
+        return TRUE;
+    }
+
+    return FALSE;
 }
+#else
+void HandleStopSignal(int) {
+    g_stop_requested.store(true, std::memory_order_relaxed);
+}
+#endif
 
-void InstallSignalHandlers() {
+void InstallStopHandlers() {
+#ifdef _WIN32
+    SetConsoleCtrlHandler(HandleConsoleCtrl, TRUE);
+#else
     std::signal(SIGINT, HandleStopSignal);
 #ifdef SIGTERM
     std::signal(SIGTERM, HandleStopSignal);
+#endif
 #endif
 }
 
@@ -34,7 +59,7 @@ void PrintUsage(std::ostream& output) {
            << "  PcapConstrictorWinPacket --help\n";
 }
 
-void PrintCaptureStats(std::ostream& output, const CaptureStats& stats) {
+void PrintOfflineStats(std::ostream& output, const CaptureStats& stats) {
     output << "packets_total: " << stats.packets_total << '\n'
            << "packets_written: " << stats.packets_written << '\n'
            << "bytes_input: " << stats.bytes_input << '\n'
@@ -64,7 +89,7 @@ int RunOfflinePipeline(const std::filesystem::path& input_path,
               << "output: " << output_path.string() << '\n';
 
     if (config.stats.enabled) {
-        PrintCaptureStats(std::cout, feed_result.stats);
+        PrintOfflineStats(std::cout, feed_result.stats);
     }
 
     return 0;
@@ -105,8 +130,8 @@ int RunLiveCapture(const PolicyConfig& config) {
         return 1;
     }
 
-    g_stop_requested = 0;
-    InstallSignalHandlers();
+    g_stop_requested.store(false, std::memory_order_relaxed);
+    InstallStopHandlers();
 
     std::cout << "Starting live capture.\n"
               << "backend: npcap\n"
@@ -132,23 +157,25 @@ int RunLiveCapture(const PolicyConfig& config) {
         std::cerr << "Npcap warning: " << result.warning << '\n';
     }
 
+    if (result.termination_reason == LiveCaptureTerminationReason::Interrupted) {
+        std::cout << "Capture interrupted, finalizing output...\n";
+    }
+
+    const std::string summary = FormatLiveCaptureSummary(
+        result.termination_reason,
+        result.stats,
+        result.elapsed_seconds,
+        config.capture.output);
+
     if (!result) {
         std::cerr << "Live capture error: " << result.error << '\n';
-        if (config.stats.enabled &&
-            (result.stats.packets_total != 0U || result.stats.receive_errors != 0U)) {
-            std::cerr << "Partial stats:\n";
-            PrintCaptureStats(std::cerr, result.stats);
-        }
+        std::cerr << summary;
         return 1;
     }
 
-    std::cout << "Live capture stopped: " << result.stop_reason << '\n';
-    if (config.stats.enabled) {
-        std::cout << "elapsed_seconds: " << result.elapsed_seconds << '\n';
-        PrintCaptureStats(std::cout, result.stats);
-    }
+    std::cout << summary;
 
-    return 0;
+    return LiveCaptureTerminationIsSuccess(result.termination_reason) ? 0 : 1;
 }
 
 }  // namespace

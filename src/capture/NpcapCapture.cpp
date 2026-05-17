@@ -8,6 +8,7 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <utility>
 
 #if PCAP_CONSTRICTOR_WINPACKET_HAS_NPCAP
@@ -21,6 +22,7 @@
 #endif
 
 #include "capture/CapturedPacket.hpp"
+#include "capture/LiveCaptureReporting.hpp"
 #include "policy/LiveCapturePolicy.hpp"
 #include "writer/PcapWriter.hpp"
 
@@ -55,8 +57,8 @@ void AccumulateDecisionStats(CaptureStats& stats, const DecisionReason reason) {
     }
 }
 
-bool StopRequested(const volatile std::sig_atomic_t* stop_requested) noexcept {
-    return stop_requested != nullptr && *stop_requested != 0;
+bool StopRequested(const std::atomic_bool* stop_requested) noexcept {
+    return stop_requested != nullptr && stop_requested->load(std::memory_order_relaxed);
 }
 
 bool DurationLimitReached(const std::chrono::steady_clock::time_point start_time,
@@ -79,6 +81,14 @@ std::string UnsupportedDatalinkError(const int datalink) {
            "; only DLT_EN10MB is supported in this milestone";
 }
 
+std::chrono::milliseconds PollInterval(const std::uint32_t read_timeout_ms) noexcept {
+    if (read_timeout_ms == 0U) {
+        return std::chrono::milliseconds(10);
+    }
+
+    return std::chrono::milliseconds(std::min<std::uint32_t>(read_timeout_ms, 100U));
+}
+
 }  // namespace
 
 NpcapCapture::NpcapCapture(PolicyConfig::CaptureOptions config) noexcept
@@ -94,7 +104,7 @@ bool NpcapCapture::HasSupport() noexcept {
 
 NpcapCaptureRunResult NpcapCapture::Run(const PolicyConfig& policy_config,
                                         const std::filesystem::path& output_path,
-                                        volatile std::sig_atomic_t* stop_requested) const {
+                                        std::atomic_bool* stop_requested) const {
     NpcapCaptureRunResult result;
 
 #if PCAP_CONSTRICTOR_WINPACKET_HAS_NPCAP
@@ -112,6 +122,7 @@ NpcapCaptureRunResult NpcapCapture::Run(const PolicyConfig& policy_config,
                                     read_timeout_ms,
                                     error_buffer);
     if (handle == nullptr) {
+        result.termination_reason = LiveCaptureTerminationReason::Error;
         result.error = error_buffer[0] != '\0'
                            ? std::string(error_buffer)
                            : "pcap_open_live failed with no error details";
@@ -131,14 +142,47 @@ NpcapCaptureRunResult NpcapCapture::Run(const PolicyConfig& policy_config,
         result.warning = error_buffer;
     }
 
+    char nonblock_error_buffer[PCAP_ERRBUF_SIZE] = {};
+    const bool nonblocking_mode_enabled =
+        pcap_setnonblock(handle, 1, nonblock_error_buffer) == 0;
+    if (!nonblocking_mode_enabled &&
+        nonblock_error_buffer[0] != '\0') {
+        if (result.warning.empty()) {
+            result.warning = std::string("pcap_setnonblock(1) warning: ") + nonblock_error_buffer;
+        } else {
+            result.warning += "\n";
+            result.warning += "pcap_setnonblock(1) warning: ";
+            result.warning += nonblock_error_buffer;
+        }
+    }
+
+#if defined(_WIN32)
+    // On Windows/Npcap, keeping min-to-copy at 0 makes read timeouts and Ctrl+C-driven
+    // shutdown much more responsive for low-traffic or idle interfaces.
+    if (pcap_setmintocopy(handle, 0) != 0) {
+        const char* handle_error = pcap_geterr(handle);
+        if (handle_error != nullptr && handle_error[0] != '\0') {
+            if (result.warning.empty()) {
+                result.warning = std::string("pcap_setmintocopy(0) warning: ") + handle_error;
+            } else {
+                result.warning += "\n";
+                result.warning += "pcap_setmintocopy(0) warning: ";
+                result.warning += handle_error;
+            }
+        }
+    }
+#endif
+
     const int datalink = pcap_datalink(handle);
     if (datalink != DLT_EN10MB) {
+        result.termination_reason = LiveCaptureTerminationReason::Error;
         result.error = UnsupportedDatalinkError(datalink);
         return result;
     }
 
     std::ofstream output_stream(output_path, std::ios::binary);
     if (!output_stream) {
+        result.termination_reason = LiveCaptureTerminationReason::Error;
         result.error = "failed to open output file '" + output_path.string() + "'";
         return result;
     }
@@ -147,10 +191,12 @@ NpcapCaptureRunResult NpcapCapture::Run(const PolicyConfig& policy_config,
     LiveCapturePolicy policy(policy_config);
 
     const auto start_time = std::chrono::steady_clock::now();
+    const auto poll_interval = PollInterval(config_.read_timeout_ms);
 
     try {
         writer.WriteGlobalHeader();
     } catch (const std::exception& exception) {
+        result.termination_reason = LiveCaptureTerminationReason::Error;
         result.error = exception.what();
         return result;
     }
@@ -158,11 +204,11 @@ NpcapCaptureRunResult NpcapCapture::Run(const PolicyConfig& policy_config,
     while (!StopRequested(stop_requested)) {
         if (config_.max_packets != 0U &&
             result.stats.packets_total >= config_.max_packets) {
-            result.stop_reason = "max_packets limit reached";
+            result.termination_reason = LiveCaptureTerminationReason::MaxPacketsReached;
             break;
         }
         if (DurationLimitReached(start_time, config_.duration_sec)) {
-            result.stop_reason = "duration_sec limit reached";
+            result.termination_reason = LiveCaptureTerminationReason::DurationReached;
             break;
         }
 
@@ -171,13 +217,17 @@ NpcapCaptureRunResult NpcapCapture::Run(const PolicyConfig& policy_config,
         const int packet_status = pcap_next_ex(handle, &header, &bytes);
 
         if (packet_status == 0) {
+            if (nonblocking_mode_enabled) {
+                std::this_thread::sleep_for(poll_interval);
+            }
             continue;
         }
         if (packet_status == PCAP_ERROR_BREAK) {
-            result.stop_reason = "capture loop ended";
+            result.termination_reason = LiveCaptureTerminationReason::CaptureLoopEnded;
             break;
         }
         if (packet_status < 0) {
+            result.termination_reason = LiveCaptureTerminationReason::Error;
             const char* handle_error = pcap_geterr(handle);
             result.error = handle_error != nullptr && handle_error[0] != '\0'
                                ? std::string(handle_error)
@@ -186,6 +236,7 @@ NpcapCaptureRunResult NpcapCapture::Run(const PolicyConfig& policy_config,
             break;
         }
         if (header == nullptr || bytes == nullptr) {
+            result.termination_reason = LiveCaptureTerminationReason::Error;
             ++result.stats.receive_errors;
             result.error = "pcap_next_ex returned success without packet data";
             break;
@@ -205,6 +256,7 @@ NpcapCaptureRunResult NpcapCapture::Run(const PolicyConfig& policy_config,
         try {
             writer.WritePacket(packet, decision.output_len);
         } catch (const std::exception& exception) {
+            result.termination_reason = LiveCaptureTerminationReason::Error;
             result.error = exception.what();
             break;
         }
@@ -216,8 +268,9 @@ NpcapCaptureRunResult NpcapCapture::Run(const PolicyConfig& policy_config,
         AccumulateDecisionStats(result.stats, decision.reason);
     }
 
-    if (StopRequested(stop_requested) && result.stop_reason == "stopped") {
-        result.stop_reason = "signal received";
+    if (StopRequested(stop_requested) &&
+        result.termination_reason == LiveCaptureTerminationReason::Stopped) {
+        result.termination_reason = LiveCaptureTerminationReason::Interrupted;
     }
 
     result.stats.bytes_saved = result.stats.bytes_input - result.stats.bytes_output;
@@ -228,6 +281,7 @@ NpcapCaptureRunResult NpcapCapture::Run(const PolicyConfig& policy_config,
     (void)policy_config;
     (void)output_path;
     (void)stop_requested;
+    result.termination_reason = LiveCaptureTerminationReason::Error;
     result.error = "Npcap live capture is unavailable in this build";
     return result;
 #endif

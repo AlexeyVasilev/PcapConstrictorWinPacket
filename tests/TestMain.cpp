@@ -2,6 +2,7 @@
 
 int RunPcapWriterTests();
 int RunConfigLoaderTests();
+int RunLiveCaptureReportingTests();
 int RunLivePolicySmokeTests();
 int RunPcapReaderTests();
 int RunOfflinePacketFeedTests();
@@ -18,6 +19,7 @@ int main() {
 
     failures += RunPcapWriterTests();
     failures += RunConfigLoaderTests();
+    failures += RunLiveCaptureReportingTests();
     failures += RunLivePolicySmokeTests();
     failures += RunPcapReaderTests();
     failures += RunOfflinePacketFeedTests();

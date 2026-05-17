@@ -59,6 +59,7 @@ if(PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING)
 endif()
 
 add_library(PcapConstrictorWinPacketCore STATIC
+    src/capture/LiveCaptureReporting.cpp
     src/capture/NpcapInterfaceListFormatting.cpp
     src/config/ConfigLoader.cpp
     src/decode/PacketDecode.cpp
@@ -115,6 +116,7 @@ add_executable(PcapConstrictorWinPacketTests
     tests/ConfigLoaderTests.cpp
     tests/GoldenOfflineWorkflowTests.cpp
     tests/LivePolicyClassificationTests.cpp
+    tests/LiveCaptureReportingTests.cpp
     tests/LivePolicyQuicTests.cpp
     tests/LivePolicySmokeTests.cpp
     tests/NpcapInterfaceListTests.cpp

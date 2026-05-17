@@ -53,6 +53,13 @@ PcapConstrictorWinPacket --list-interfaces
 PcapConstrictorWinPacket --config config.ini
 ```
 
+## Stopping Capture
+
+- `Ctrl+C` stops live capture cooperatively.
+- Already written packets are kept in the output classic PCAP.
+- `max_packets` and `duration_sec` are recommended for bounded smoke tests.
+- `read_timeout_ms` affects how quickly the capture loop notices cancellation and limit checks.
+
 ## Config
 
 See `config.example.ini`.
@@ -74,6 +81,18 @@ read_timeout_ms = 100
 
 Copy the reported `name:` value into `interface =`. Npcap interface names typically look like
 `\Device\NPF_{GUID}`.
+
+Small live smoke example:
+
+```ini
+[capture]
+backend = npcap
+interface = \Device\NPF_{GUID}
+output = live-test.pcap
+max_packets = 100
+duration_sec = 0
+read_timeout_ms = 100
+```
 
 TLS currently keeps `app_data_continuation_policy = final_only` only. `stream` and `bulk` remain recognized but unsupported. Offline tests do not require Npcap.
 

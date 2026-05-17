@@ -1,0 +1,68 @@
+#include <iostream>
+#include <string>
+#include <string_view>
+
+#include "capture/LiveCaptureReporting.hpp"
+
+namespace {
+
+int Fail(std::string_view message) {
+    std::cerr << "[LiveCaptureReportingTests] " << message << '\n';
+    return 1;
+}
+
+}  // namespace
+
+int RunLiveCaptureReportingTests() {
+    using namespace pcap_constrictor_winpacket;
+
+    if (LiveCaptureTerminationReasonString(LiveCaptureTerminationReason::Interrupted) !=
+        "interrupted") {
+        return Fail("interrupted termination reason string mismatch");
+    }
+
+    if (LiveCaptureTerminationIsSuccess(LiveCaptureTerminationReason::Interrupted) != true) {
+        return Fail("interrupted termination should be considered successful");
+    }
+
+    if (LiveCaptureTerminationIsSuccess(LiveCaptureTerminationReason::Error) != false) {
+        return Fail("error termination should not be considered successful");
+    }
+
+    CaptureStats stats;
+    stats.packets_total = 100U;
+    stats.packets_written = 100U;
+    stats.bytes_input = 12000U;
+    stats.bytes_output = 4500U;
+    stats.bytes_saved = 7500U;
+    stats.receive_errors = 2U;
+    stats.tls_appdata_constricted = 8U;
+    stats.quic_short_constricted = 3U;
+
+    const std::string summary = FormatLiveCaptureSummary(
+        LiveCaptureTerminationReason::MaxPacketsReached,
+        stats,
+        1.25,
+        "live-test.pcap");
+
+    if (summary.find("termination: max_packets limit reached") == std::string::npos) {
+        return Fail("summary should include termination reason");
+    }
+    if (summary.find("output: live-test.pcap") == std::string::npos) {
+        return Fail("summary should include output path");
+    }
+    if (summary.find("packets_seen: 100") == std::string::npos) {
+        return Fail("summary should include packets_seen");
+    }
+    if (summary.find("bytes_written: 4500") == std::string::npos) {
+        return Fail("summary should include bytes_written");
+    }
+    if (summary.find("tls_appdata_constricted: 8") == std::string::npos) {
+        return Fail("summary should include tls counter");
+    }
+    if (summary.find("quic_short_constricted: 3") == std::string::npos) {
+        return Fail("summary should include quic counter");
+    }
+
+    return 0;
+}
