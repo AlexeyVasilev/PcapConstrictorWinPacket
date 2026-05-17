@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <span>
 
+#include "capture/PcapLinkType.hpp"
 #include "capture/PacketView.hpp"
 
 namespace pcap_constrictor_winpacket {
@@ -22,6 +23,7 @@ struct CapturedPacket {
     std::chrono::system_clock::time_point timestamp{};
     std::uint32_t ifindex{0};
     PacketDirection direction{PacketDirection::Unknown};
+    PcapLinkType link_type{PcapLinkType::Ethernet};
 
     [[nodiscard]] std::span<const std::byte> data() const noexcept {
         return packet.data();

@@ -93,7 +93,8 @@ LiveCaptureDecision LiveCapturePolicy::Evaluate(const CapturedPacket& packet) no
         std::max(packet.original_len(), output_len);
 
     PacketDecodeResult decoded =
-        DecodePacket(std::span<const std::byte>(packet.data().data(), safe_captured_len));
+        DecodePacket(std::span<const std::byte>(packet.data().data(), safe_captured_len),
+                     packet.link_type);
 
     DecisionReason reason = DecisionReason::Default;
     if (malformed) {

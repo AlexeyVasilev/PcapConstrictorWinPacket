@@ -19,13 +19,16 @@ int Fail(std::string_view message) {
 
 pcap_constrictor_winpacket::CapturedPacket MakePacket(std::span<const std::byte> bytes,
                                                      std::uint32_t captured_len,
-                                                     std::uint32_t original_len) {
+                                                     std::uint32_t original_len,
+                                                     pcap_constrictor_winpacket::PcapLinkType link_type =
+                                                         pcap_constrictor_winpacket::PcapLinkType::Ethernet) {
     using namespace pcap_constrictor_winpacket;
     return CapturedPacket{
         .packet = PacketView(bytes, captured_len, original_len),
         .timestamp = std::chrono::system_clock::time_point{},
         .ifindex = 0,
         .direction = PacketDirection::Unknown,
+        .link_type = link_type,
     };
 }
 
@@ -89,6 +92,23 @@ int RunLivePolicyClassificationTests() {
         std::byte{0x00}, std::byte{0x11}, std::byte{0x22}, std::byte{0x33}, std::byte{0x44}, std::byte{0x55},
         std::byte{0x66}, std::byte{0x77}, std::byte{0x88}, std::byte{0x99}, std::byte{0xaa}, std::byte{0xbb},
         std::byte{0x08}, std::byte{0x00},
+        std::byte{0x45}, std::byte{0x00}, std::byte{0x00}, std::byte{0x3c}, std::byte{0x00}, std::byte{0x01},
+        std::byte{0x00}, std::byte{0x00}, std::byte{0x40}, std::byte{0x06}, std::byte{0x00}, std::byte{0x00},
+        std::byte{0x0a}, std::byte{0x00}, std::byte{0x00}, std::byte{0x01},
+        std::byte{0x0a}, std::byte{0x00}, std::byte{0x00}, std::byte{0x02},
+        std::byte{0x30}, std::byte{0x39}, std::byte{0x01}, std::byte{0xbb},
+        std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x01},
+        std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x02},
+        std::byte{0x50}, std::byte{0x18}, std::byte{0x20}, std::byte{0x00},
+        std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+        std::byte{0x16}, std::byte{0x03}, std::byte{0x03}, std::byte{0x00}, std::byte{0x04},
+        std::byte{0x01}, std::byte{0x02}, std::byte{0x03}, std::byte{0x04},
+        std::byte{0x17}, std::byte{0x03}, std::byte{0x03}, std::byte{0x00}, std::byte{0x06},
+        std::byte{0xde}, std::byte{0xad}, std::byte{0xbe}, std::byte{0xef}, std::byte{0xca}, std::byte{0xfe},
+    };
+
+    const std::vector<std::byte> loopbackTlsHandshakeAppData443{
+        std::byte{0x02}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
         std::byte{0x45}, std::byte{0x00}, std::byte{0x00}, std::byte{0x3c}, std::byte{0x00}, std::byte{0x01},
         std::byte{0x00}, std::byte{0x00}, std::byte{0x40}, std::byte{0x06}, std::byte{0x00}, std::byte{0x00},
         std::byte{0x0a}, std::byte{0x00}, std::byte{0x00}, std::byte{0x01},
@@ -176,6 +196,27 @@ int RunLivePolicyClassificationTests() {
         }
         if (decision.output_len >= tlsHandshakeAppData443.size()) {
             return Fail("Confirmed TLS AppData packet should be shortened when keep bytes are small");
+        }
+    }
+
+    {
+        PolicyConfig config;
+        config.capture.default_snaplen = 256U;
+        config.capture.max_capture_len = 256U;
+        config.general.min_saved_bytes_per_packet = 1U;
+        config.tls.app_data_keep_record_bytes = 2U;
+        LiveCapturePolicy policy(config);
+        const LiveCaptureDecision decision = policy.Evaluate(
+            MakePacket(std::span(loopbackTlsHandshakeAppData443),
+                       static_cast<std::uint32_t>(loopbackTlsHandshakeAppData443.size()),
+                       128U,
+                       PcapLinkType::Null));
+
+        if (decision.reason != DecisionReason::TlsApplicationDataConstricted) {
+            return Fail("DLT_NULL TLS packet should use the same TLS constriction policy");
+        }
+        if (decision.output_len >= loopbackTlsHandshakeAppData443.size()) {
+            return Fail("DLT_NULL TLS packet should preserve the null header while still shortening payload");
         }
     }
 

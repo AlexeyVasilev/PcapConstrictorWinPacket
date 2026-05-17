@@ -53,6 +53,18 @@ PcapConstrictorWinPacket --list-interfaces
 PcapConstrictorWinPacket --config config.ini
 ```
 
+Loopback example for localhost traffic:
+
+```ini
+[capture]
+backend = npcap
+interface = \Device\NPF_Loopback
+output = loopback-test.pcap
+max_packets = 100
+duration_sec = 10
+read_timeout_ms = 100
+```
+
 ## Stopping Capture
 
 - `Ctrl+C` stops live capture cooperatively.
@@ -94,6 +106,14 @@ duration_sec = 0
 read_timeout_ms = 100
 ```
 
+Loopback smoke guidance:
+
+- run `PcapConstrictorWinPacket --list-interfaces`
+- choose `\Device\NPF_Loopback`
+- set `max_packets = 100` or `duration_sec = 10`
+- generate localhost traffic
+- open the output PCAP in Wireshark
+
 TLS currently keeps `app_data_continuation_policy = final_only` only. `stream` and `bulk` remain recognized but unsupported. Offline tests do not require Npcap.
 
 ## Build Notes
@@ -130,7 +150,8 @@ cmake -S . -B build -DPCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING=
 - no WFP/NDIS kernel filtering
 - no `Packet.dll` low-level backend
 - live capture currently uses only the simplest `pcap_open_live` backend
-- live capture currently supports only Ethernet `DLT_EN10MB`
+- live capture currently supports Ethernet `DLT_EN10MB` and Npcap loopback `DLT_NULL`
+- loopback capture is useful for localhost traffic
 - unsupported linktypes fail clearly
 - no BPF filtering yet
 - no TLS/QUIC decryption

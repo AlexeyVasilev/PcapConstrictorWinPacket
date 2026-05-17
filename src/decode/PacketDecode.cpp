@@ -13,6 +13,9 @@ constexpr std::uint16_t kEtherTypeProviderBridge = 0x88A8U;
 constexpr std::uint16_t kEtherTypeIpv4 = 0x0800U;
 constexpr std::uint16_t kEtherTypeIpv6 = 0x86DDU;
 
+constexpr std::uint32_t kWindowsAfInet = 2U;
+constexpr std::uint32_t kWindowsAfInet6 = 23U;
+
 constexpr std::uint8_t kIpProtocolTcp = 6U;
 constexpr std::uint8_t kIpProtocolUdp = 17U;
 
@@ -35,6 +38,14 @@ std::uint16_t ReadBe16(const std::span<const std::byte> packet,
                        const std::size_t offset) noexcept {
     return static_cast<std::uint16_t>(std::to_integer<std::uint8_t>(packet[offset])) << 8U |
            static_cast<std::uint16_t>(std::to_integer<std::uint8_t>(packet[offset + 1U]));
+}
+
+std::uint32_t ReadLe32(const std::span<const std::byte> packet,
+                       const std::size_t offset) noexcept {
+    return static_cast<std::uint32_t>(std::to_integer<std::uint8_t>(packet[offset])) |
+           (static_cast<std::uint32_t>(std::to_integer<std::uint8_t>(packet[offset + 1U])) << 8U) |
+           (static_cast<std::uint32_t>(std::to_integer<std::uint8_t>(packet[offset + 2U])) << 16U) |
+           (static_cast<std::uint32_t>(std::to_integer<std::uint8_t>(packet[offset + 3U])) << 24U);
 }
 
 bool IsVlanEthertype(const std::uint16_t ether_type) noexcept {
@@ -244,12 +255,73 @@ void DecodeIpv6(PacketDecodeResult& result,
     }
 }
 
+void DecodeNull(PacketDecodeResult& result,
+                const std::span<const std::byte> packet) noexcept {
+    if (!HasBytes(packet, 0U, 4U)) {
+        result.failure_reason = PacketDecodeFailureReason::TruncatedNullHeader;
+        return;
+    }
+
+    result.success = true;
+    result.link_header_length = 4U;
+    result.network_header_offset = 4U;
+
+    const std::uint32_t family = ReadLe32(packet, 0U);
+    IpVersion family_ip_version = IpVersion::None;
+    if (family == kWindowsAfInet) {
+        family_ip_version = IpVersion::Ipv4;
+        result.ethertype = kEtherTypeIpv4;
+    } else if (family == kWindowsAfInet6) {
+        family_ip_version = IpVersion::Ipv6;
+        result.ethertype = kEtherTypeIpv6;
+    }
+
+    IpVersion nibble_ip_version = IpVersion::None;
+    if (HasBytes(packet, 4U, 1U)) {
+        const auto version =
+            static_cast<std::uint8_t>(std::to_integer<std::uint8_t>(packet[4U]) >> 4U);
+        if (version == 4U) {
+            nibble_ip_version = IpVersion::Ipv4;
+        } else if (version == 6U) {
+            nibble_ip_version = IpVersion::Ipv6;
+        }
+    }
+
+    const bool family_known = family_ip_version != IpVersion::None;
+    const bool version_known = nibble_ip_version != IpVersion::None;
+    if (family_known && version_known && family_ip_version != nibble_ip_version) {
+        result.success = false;
+        result.failure_reason = PacketDecodeFailureReason::UnsupportedNullFamily;
+        return;
+    }
+
+    const IpVersion ip_version =
+        family_known ? family_ip_version : nibble_ip_version;
+    if (ip_version == IpVersion::Ipv4) {
+        result.ethertype = kEtherTypeIpv4;
+        DecodeIpv4(result, packet, 4U);
+        return;
+    }
+    if (ip_version == IpVersion::Ipv6) {
+        result.ethertype = kEtherTypeIpv6;
+        DecodeIpv6(result, packet, 4U);
+        return;
+    }
+
+    result.success = false;
+    result.failure_reason = PacketDecodeFailureReason::UnsupportedNullFamily;
+}
+
 }  // namespace
 
 std::string_view PacketDecodeResult::failure_reason_string() const noexcept {
     switch (failure_reason) {
         case PacketDecodeFailureReason::None:
             return "none";
+        case PacketDecodeFailureReason::TruncatedNullHeader:
+            return "truncated_null_header";
+        case PacketDecodeFailureReason::UnsupportedNullFamily:
+            return "unsupported_null_family";
         case PacketDecodeFailureReason::TruncatedEthernetHeader:
             return "truncated_ethernet_header";
         case PacketDecodeFailureReason::TruncatedVlanTag:
@@ -283,8 +355,14 @@ std::string_view PacketDecodeResult::failure_reason_string() const noexcept {
     return "unknown";
 }
 
-PacketDecodeResult DecodePacket(const std::span<const std::byte> packet) noexcept {
+PacketDecodeResult DecodePacket(const std::span<const std::byte> packet,
+                                const PcapLinkType link_type) noexcept {
     PacketDecodeResult result;
+
+    if (link_type == PcapLinkType::Null) {
+        DecodeNull(result, packet);
+        return result;
+    }
 
     if (!HasBytes(packet, 0U, 14U)) {
         result.failure_reason = PacketDecodeFailureReason::TruncatedEthernetHeader;

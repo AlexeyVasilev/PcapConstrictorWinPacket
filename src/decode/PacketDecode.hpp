@@ -6,6 +6,8 @@
 #include <span>
 #include <string_view>
 
+#include "capture/PcapLinkType.hpp"
+
 namespace pcap_constrictor_winpacket {
 
 enum class IpVersion {
@@ -22,6 +24,8 @@ enum class TransportProtocol {
 
 enum class PacketDecodeFailureReason {
     None,
+    TruncatedNullHeader,
+    UnsupportedNullFamily,
     TruncatedEthernetHeader,
     TruncatedVlanTag,
     TruncatedIpv4Header,
@@ -80,6 +84,8 @@ struct PacketDecodeResult {
     [[nodiscard]] std::string_view failure_reason_string() const noexcept;
 };
 
-[[nodiscard]] PacketDecodeResult DecodePacket(std::span<const std::byte> packet) noexcept;
+[[nodiscard]] PacketDecodeResult DecodePacket(
+    std::span<const std::byte> packet,
+    PcapLinkType link_type = PcapLinkType::Ethernet) noexcept;
 
 }  // namespace pcap_constrictor_winpacket

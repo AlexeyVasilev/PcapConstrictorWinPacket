@@ -130,5 +130,44 @@ int RunPcapWriterTests() {
         }
     }
 
+    {
+        const fs::path null_output_path = MakeTemporaryPcapPath();
+        std::ofstream output(null_output_path, std::ios::binary);
+        if (!output) {
+            return Fail("unable to create temporary null-linktype output file");
+        }
+
+        CapturedPacket packet{
+            .packet = PacketView(std::span(frame), static_cast<std::uint32_t>(frame.size()), 64U),
+            .timestamp = std::chrono::system_clock::time_point{},
+            .ifindex = 0,
+            .direction = PacketDirection::Unknown,
+            .link_type = PcapLinkType::Null,
+        };
+
+        PcapWriter writer(output, 256U, PcapLinkType::Null);
+        writer.WritePacket(packet, 8U);
+        output.close();
+
+        std::vector<unsigned char> null_bytes;
+        {
+            std::ifstream input(null_output_path, std::ios::binary);
+            if (!input) {
+                RemoveIfExists(null_output_path);
+                return Fail("unable to reopen null-linktype PCAP file");
+            }
+            null_bytes.assign(std::istreambuf_iterator<char>(input),
+                              std::istreambuf_iterator<char>());
+        }
+        RemoveIfExists(null_output_path);
+
+        if (ReadLe32(null_bytes, 16) != 256U) {
+            return Fail("wrong PCAP snaplen for null-linktype file");
+        }
+        if (ReadLe32(null_bytes, 20) != 0U) {
+            return Fail("writer should preserve requested DLT_NULL global linktype");
+        }
+    }
+
     return 0;
 }

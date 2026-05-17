@@ -19,9 +19,12 @@ void WriteBytes(std::ostream& output, const void* data, std::size_t size) {
 
 }  // namespace
 
-PcapWriter::PcapWriter(std::ostream& output, std::uint32_t snaplen) noexcept
+PcapWriter::PcapWriter(std::ostream& output,
+                       std::uint32_t snaplen,
+                       const PcapLinkType link_type) noexcept
     : output_(output),
-      snaplen_(snaplen) {}
+      snaplen_(snaplen),
+      link_type_(link_type) {}
 
 void PcapWriter::WriteGlobalHeader() {
     if (global_header_written_) {
@@ -34,7 +37,7 @@ void PcapWriter::WriteGlobalHeader() {
     WriteLe32(0);
     WriteLe32(0);
     WriteLe32(snaplen_);
-    WriteLe32(kEthernetLinkType);
+    WriteLe32(static_cast<std::uint32_t>(link_type_));
 
     global_header_written_ = true;
 }

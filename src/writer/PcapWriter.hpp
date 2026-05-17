@@ -4,16 +4,17 @@
 #include <ostream>
 
 #include "capture/CapturedPacket.hpp"
+#include "capture/PcapLinkType.hpp"
 
 namespace pcap_constrictor_winpacket {
 
 class PcapWriter {
 public:
     static constexpr std::uint32_t kDefaultSnaplen = 65535;
-    static constexpr std::uint32_t kEthernetLinkType = 1;  // DLT_EN10MB
 
     explicit PcapWriter(std::ostream& output,
-                        std::uint32_t snaplen = kDefaultSnaplen) noexcept;
+                        std::uint32_t snaplen = kDefaultSnaplen,
+                        PcapLinkType link_type = PcapLinkType::Ethernet) noexcept;
 
     void WriteGlobalHeader();
     void WritePacket(const CapturedPacket& packet);
@@ -29,6 +30,7 @@ private:
 
     std::ostream& output_;
     std::uint32_t snaplen_{kDefaultSnaplen};
+    PcapLinkType link_type_{PcapLinkType::Ethernet};
     bool global_header_written_{false};
 };
 

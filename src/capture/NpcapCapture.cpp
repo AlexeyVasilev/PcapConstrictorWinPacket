@@ -78,7 +78,20 @@ std::chrono::system_clock::time_point ToTimestamp(std::int64_t seconds,
 
 std::string UnsupportedDatalinkError(const int datalink) {
     return "unsupported live datalink " + std::to_string(datalink) +
-           "; only DLT_EN10MB is supported in this milestone";
+           "; supported linktypes in this milestone are DLT_EN10MB and DLT_NULL";
+}
+
+bool TryMapDatalink(const int datalink, PcapLinkType& link_type) noexcept {
+    if (datalink == DLT_EN10MB) {
+        link_type = PcapLinkType::Ethernet;
+        return true;
+    }
+    if (datalink == DLT_NULL) {
+        link_type = PcapLinkType::Null;
+        return true;
+    }
+
+    return false;
 }
 
 std::chrono::milliseconds PollInterval(const std::uint32_t read_timeout_ms) noexcept {
@@ -174,7 +187,8 @@ NpcapCaptureRunResult NpcapCapture::Run(const PolicyConfig& policy_config,
 #endif
 
     const int datalink = pcap_datalink(handle);
-    if (datalink != DLT_EN10MB) {
+    PcapLinkType link_type = PcapLinkType::Ethernet;
+    if (!TryMapDatalink(datalink, link_type)) {
         result.termination_reason = LiveCaptureTerminationReason::Error;
         result.error = UnsupportedDatalinkError(datalink);
         return result;
@@ -187,7 +201,7 @@ NpcapCaptureRunResult NpcapCapture::Run(const PolicyConfig& policy_config,
         return result;
     }
 
-    PcapWriter writer(output_stream, output_snaplen);
+    PcapWriter writer(output_stream, output_snaplen, link_type);
     LiveCapturePolicy policy(policy_config);
 
     const auto start_time = std::chrono::steady_clock::now();
@@ -250,6 +264,7 @@ NpcapCaptureRunResult NpcapCapture::Run(const PolicyConfig& policy_config,
             .timestamp = ToTimestamp(header->ts.tv_sec, header->ts.tv_usec),
             .ifindex = 0,
             .direction = PacketDirection::Unknown,
+            .link_type = link_type,
         };
 
         const LiveCaptureDecision decision = policy.Evaluate(packet);

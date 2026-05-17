@@ -20,6 +20,62 @@ int RunPacketDecodeTests() {
     using namespace pcap_constrictor_winpacket;
 
     {
+        constexpr std::array<std::byte, 44> packet{
+            std::byte{0x02}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+            std::byte{0x45}, std::byte{0x00}, std::byte{0x00}, std::byte{0x28}, std::byte{0x12}, std::byte{0x34},
+            std::byte{0x40}, std::byte{0x00}, std::byte{0x40}, std::byte{0x06}, std::byte{0x00}, std::byte{0x00},
+            std::byte{0xc0}, std::byte{0xa8}, std::byte{0x01}, std::byte{0x01},
+            std::byte{0xc0}, std::byte{0xa8}, std::byte{0x01}, std::byte{0x02},
+            std::byte{0x30}, std::byte{0x39}, std::byte{0x01}, std::byte{0xbb},
+            std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x01},
+            std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x02},
+            std::byte{0x50}, std::byte{0x18}, std::byte{0x20}, std::byte{0x00},
+            std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+        };
+
+        const PacketDecodeResult decoded = DecodePacket(std::span(packet), PcapLinkType::Null);
+        if (!decoded.success || decoded.failure_reason != PacketDecodeFailureReason::None) {
+            return Fail("valid DLT_NULL IPv4 TCP packet should decode");
+        }
+        if (decoded.link_header_length != 4U || decoded.network_header_offset != 4U) {
+            return Fail("DLT_NULL IPv4 offsets mismatch");
+        }
+        if (decoded.ip_version != IpVersion::Ipv4 || decoded.transport_protocol != TransportProtocol::Tcp ||
+            decoded.src_port != 12345U || decoded.dst_port != 443U) {
+            return Fail("DLT_NULL IPv4 TCP metadata mismatch");
+        }
+    }
+
+    {
+        constexpr std::array<std::byte, 64> packet{
+            std::byte{0x17}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+            std::byte{0x60}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+            std::byte{0x00}, std::byte{0x14}, std::byte{0x06}, std::byte{0x40},
+            std::byte{0x20}, std::byte{0x01}, std::byte{0x0d}, std::byte{0xb8},
+            std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+            std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+            std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x01},
+            std::byte{0x20}, std::byte{0x01}, std::byte{0x0d}, std::byte{0xb8},
+            std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+            std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+            std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x02},
+            std::byte{0x13}, std::byte{0x88}, std::byte{0x00}, std::byte{0x50},
+            std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x03},
+            std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x04},
+            std::byte{0x50}, std::byte{0x10}, std::byte{0x20}, std::byte{0x00},
+            std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+        };
+
+        const PacketDecodeResult decoded = DecodePacket(std::span(packet), PcapLinkType::Null);
+        if (!decoded.success || decoded.failure_reason != PacketDecodeFailureReason::None) {
+            return Fail("valid DLT_NULL IPv6 TCP packet should decode");
+        }
+        if (decoded.ip_version != IpVersion::Ipv6 || decoded.transport_protocol != TransportProtocol::Tcp) {
+            return Fail("DLT_NULL IPv6 TCP metadata mismatch");
+        }
+    }
+
+    {
         constexpr std::array<std::byte, 54> packet{
             std::byte{0x00}, std::byte{0x11}, std::byte{0x22}, std::byte{0x33}, std::byte{0x44}, std::byte{0x55},
             std::byte{0x66}, std::byte{0x77}, std::byte{0x88}, std::byte{0x99}, std::byte{0xaa}, std::byte{0xbb},
@@ -128,6 +184,16 @@ int RunPacketDecodeTests() {
         }
         if (decoded.link_header_length != 18U) {
             return Fail("VLAN link header length mismatch");
+        }
+    }
+
+    {
+        constexpr std::array<std::byte, 3> packet{
+            std::byte{0x02}, std::byte{0x00}, std::byte{0x00},
+        };
+        const PacketDecodeResult decoded = DecodePacket(std::span(packet), PcapLinkType::Null);
+        if (decoded.failure_reason != PacketDecodeFailureReason::TruncatedNullHeader) {
+            return Fail("truncated DLT_NULL header should fail clearly");
         }
     }
 
