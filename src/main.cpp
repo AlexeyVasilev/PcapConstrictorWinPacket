@@ -133,21 +133,7 @@ int RunLiveCapture(const PolicyConfig& config) {
     g_stop_requested.store(false, std::memory_order_relaxed);
     InstallStopHandlers();
 
-    std::cout << "Starting live capture.\n"
-              << "backend: npcap\n"
-              << "interface: " << config.capture.interface << '\n'
-              << "output: " << config.capture.output.string() << '\n'
-              << "promiscuous: " << (config.capture.promiscuous ? "true" : "false") << '\n'
-              << "default_snaplen: " << config.capture.default_snaplen << '\n'
-              << "max_capture_len: " << config.capture.max_capture_len << '\n'
-              << "read_timeout_ms: " << config.capture.read_timeout_ms << '\n';
-    if (config.capture.max_packets != 0U) {
-        std::cout << "max_packets: " << config.capture.max_packets << '\n';
-    }
-    if (config.capture.duration_sec != 0U) {
-        std::cout << "duration_sec: " << config.capture.duration_sec << '\n';
-    }
-    std::cout << "Press Ctrl+C to stop.\n";
+    std::cout << "Preparing live capture.\n";
 
     NpcapCapture capture(config.capture);
     const NpcapCaptureRunResult result =
@@ -165,7 +151,8 @@ int RunLiveCapture(const PolicyConfig& config) {
         result.termination_reason,
         result.stats,
         result.elapsed_seconds,
-        config.capture.output);
+        config.capture.output,
+        config.capture.promiscuous);
 
     if (!result) {
         std::cerr << "Live capture error: " << result.error << '\n';

@@ -1,13 +1,13 @@
 # PcapConstrictorWinPacket
 
-PcapConstrictorWinPacket is a planned Windows Npcap/libpcap live recorder with TLS/QUIC-aware adaptive PCAP capture. This first milestone establishes an independent Windows-oriented skeleton with the offline policy pipeline and golden compatibility tests, based on the PcapConstrictorAFPacket policy architecture.
+PcapConstrictorWinPacket is a planned Windows Npcap/libpcap live recorder with TLS/QUIC-aware adaptive PCAP capture. The current codebase already includes offline compatibility workflows plus the first simple Npcap live capture path, based on the PcapConstrictorAFPacket policy architecture.
 
 ## Current Milestone
 
 Current scope:
 
 - independent `PcapConstrictorWinPacket` repository and targets
-- offline PCAP compatibility pipeline only
+- offline PCAP compatibility pipeline
 - Npcap/libpcap interface discovery
 - basic Npcap/libpcap live capture via `pcap_open_live`
 - copied/adapted TLS, QUIC, decode, writer, reader, and live-policy core
@@ -71,6 +71,15 @@ read_timeout_ms = 100
 - Already written packets are kept in the output classic PCAP.
 - `max_packets` and `duration_sec` are recommended for bounded smoke tests.
 - `read_timeout_ms` affects how quickly the capture loop notices cancellation and limit checks.
+
+## Promiscuous Mode
+
+- `promiscuous = true` requests promiscuous mode through `pcap_open_live`.
+- `promiscuous = false` opens the adapter in non-promiscuous mode.
+- On switched Ethernet, promiscuous mode does not guarantee visibility into all LAN traffic.
+- On Wi-Fi, promiscuous mode is not the same as monitor mode and may be limited by driver, hardware, or Npcap behavior.
+- Loopback capture does not meaningfully use promiscuous mode.
+- Depending on the Npcap installation mode, live capture and promiscuous capture may require administrator privileges.
 
 ## Config
 

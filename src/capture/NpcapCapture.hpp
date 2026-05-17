@@ -16,6 +16,7 @@ struct NpcapCaptureRunResult {
     std::string error{};
     std::string warning{};
     LiveCaptureTerminationReason termination_reason{LiveCaptureTerminationReason::Stopped};
+    PcapLinkType link_type{PcapLinkType::Ethernet};
     double elapsed_seconds{0.0};
 
     [[nodiscard]] bool ok() const noexcept {

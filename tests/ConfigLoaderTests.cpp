@@ -225,6 +225,17 @@ min_saved_bytes_per_packet = 24
 
     {
         const ConfigLoadResult parsed =
+            ConfigLoader::LoadFromString("[capture]\npromiscuous = false\n", "promiscuous-false.ini");
+        if (!parsed) {
+            return Fail("capture.promiscuous=false should parse");
+        }
+        if (parsed.config.capture.promiscuous) {
+            return Fail("capture.promiscuous=false mismatch");
+        }
+    }
+
+    {
+        const ConfigLoadResult parsed =
             ConfigLoader::LoadFromString("[capture]\ninterface =\n", "empty-interface.ini");
         if (!parsed) {
             return Fail("empty capture.interface should parse");

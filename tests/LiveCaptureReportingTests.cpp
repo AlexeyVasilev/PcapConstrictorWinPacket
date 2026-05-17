@@ -43,13 +43,27 @@ int RunLiveCaptureReportingTests() {
         LiveCaptureTerminationReason::MaxPacketsReached,
         stats,
         1.25,
-        "live-test.pcap");
+        "live-test.pcap",
+        false);
+
+    const std::string startup = FormatLiveCaptureStartupSummary(
+        "\\Device\\NPF_Loopback",
+        "live-test.pcap",
+        4096U,
+        100U,
+        true,
+        PcapLinkType::Null,
+        100U,
+        10U);
 
     if (summary.find("termination: max_packets limit reached") == std::string::npos) {
         return Fail("summary should include termination reason");
     }
     if (summary.find("output: live-test.pcap") == std::string::npos) {
         return Fail("summary should include output path");
+    }
+    if (summary.find("promiscuous: disabled") == std::string::npos) {
+        return Fail("summary should include promiscuous mode");
     }
     if (summary.find("packets_seen: 100") == std::string::npos) {
         return Fail("summary should include packets_seen");
@@ -62,6 +76,16 @@ int RunLiveCaptureReportingTests() {
     }
     if (summary.find("quic_short_constricted: 3") == std::string::npos) {
         return Fail("summary should include quic counter");
+    }
+    if (startup.find("promiscuous: enabled") == std::string::npos) {
+        return Fail("startup summary should include promiscuous mode");
+    }
+    if (startup.find("linktype: DLT_NULL") == std::string::npos) {
+        return Fail("startup summary should include linktype");
+    }
+    if (startup.find("max_packets: 100") == std::string::npos ||
+        startup.find("duration_sec: 10") == std::string::npos) {
+        return Fail("startup summary should include configured limits");
     }
 
     return 0;

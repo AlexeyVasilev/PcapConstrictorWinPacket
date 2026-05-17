@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <fstream>
+#include <iostream>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -193,6 +194,20 @@ NpcapCaptureRunResult NpcapCapture::Run(const PolicyConfig& policy_config,
         result.error = UnsupportedDatalinkError(datalink);
         return result;
     }
+    result.link_type = link_type;
+
+    std::cout << FormatLiveCaptureStartupSummary(config_.interface,
+                                                 output_path,
+                                                 output_snaplen,
+                                                 config_.read_timeout_ms,
+                                                 config_.promiscuous,
+                                                 link_type,
+                                                 config_.max_packets,
+                                                 config_.duration_sec);
+    if (link_type == PcapLinkType::Null && config_.promiscuous) {
+        std::cout << "Note: promiscuous mode is not meaningful for loopback DLT_NULL capture.\n";
+    }
+    std::cout << "Press Ctrl+C to stop.\n";
 
     std::ofstream output_stream(output_path, std::ios::binary);
     if (!output_stream) {
