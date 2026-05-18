@@ -113,6 +113,11 @@ if(PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING)
         )
         target_link_libraries(PcapConstrictorWinPacket PRIVATE delayimp)
     elseif(WIN32)
+        message(WARNING
+            "Npcap support is enabled for a non-MSVC Windows build. "
+            "Graceful missing-Npcap runtime diagnostics are not guaranteed in this configuration "
+            "because delay-load for wpcap.dll/Packet.dll is only configured for MSVC in v0.1.0. "
+            "If the DLLs are unavailable in the Windows DLL search path, the process may fail before main().")
         # TODO: Add an equivalent lazy Npcap runtime loading strategy for non-MSVC
         # Windows toolchains. v0.1.0 release hardening currently relies on MSVC
         # delay-load support so the executable can reach main() before touching

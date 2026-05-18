@@ -44,7 +44,7 @@ Requirements for the Windows x64 prebuilt binary package:
 
 The prebuilt package does not include Npcap. The Npcap runtime is required to use `--list-interfaces` and live capture in an Npcap-enabled build.
 
-If the Npcap runtime DLLs are missing, `--list-interfaces` and live capture should print a clear console error explaining that `wpcap.dll` and `Packet.dll` could not be loaded and that the Npcap runtime must be installed separately.
+The official `v0.1.0` Windows x64 prebuilt binary should be built with MSVC. In that release configuration, the executable uses delay-load for `wpcap.dll` and `Packet.dll`, so `--help` and offline mode can still start when the Npcap runtime DLLs are missing, and `--list-interfaces` or live capture can print a clear console error explaining that the Npcap runtime must be installed separately.
 
 ## Build From Source
 
@@ -57,6 +57,12 @@ Requirements for building from source:
 The Npcap SDK is only needed to build from source. It is not needed just to run a prebuilt binary.
 
 If `NPCAP_SDK_DIR` is provided, the resulting build can include `--list-interfaces` and live capture support. The Npcap runtime must still be installed on the machine where that binary is used.
+
+Recommended release toolchain:
+
+- MSVC is the recommended toolchain for the official release binary
+- MSVC Npcap-enabled builds use delay-load for `wpcap.dll` and `Packet.dll`
+- this is the supported path for graceful missing-Npcap runtime diagnostics in `v0.1.0`
 
 Example:
 
@@ -71,6 +77,14 @@ Offline-only builds are also supported:
 - when `NPCAP_SDK_DIR` is missing, CMake can fall back to an offline-only build
 - offline-only builds do not provide `--list-interfaces` or live capture
 - offline compatibility workflows can still run without live Npcap support if built that way
+- offline-only builds and offline mode do not require the Npcap runtime
+
+Current non-MSVC limitation:
+
+- MinGW/GCC Npcap-enabled builds do not currently provide the same graceful missing-runtime guarantee as the MSVC release build
+- if `wpcap.dll` or `Packet.dll` are missing from the Windows DLL search path, the Windows loader may fail before `main()`
+- in that case the application cannot print its own missing-runtime error, and even `--help` may not start
+- for MinGW development builds, install Npcap normally or ensure the Npcap DLL directory is discoverable by Windows
 
 If you want an offline-only build explicitly:
 
@@ -96,8 +110,9 @@ Package notes:
 
 - the package does not include Npcap
 - install Npcap from the official Npcap website before using `--list-interfaces` or live capture
-- if Npcap is missing, `--list-interfaces` and live capture will not work in an Npcap-enabled build
-- if the Npcap runtime DLLs are missing, the program should report that with a console error instead of failing silently
+- the official `v0.1.0` package should be built with MSVC x64
+- in the MSVC release build, missing `wpcap.dll` or `Packet.dll` should be reported with a console error before `--list-interfaces` or live capture proceeds
+- non-MSVC Npcap-enabled builds may still fail before application startup if the Npcap DLLs are not discoverable by Windows
 - the Npcap SDK is not required for users of the prebuilt binary package
 - this repository does not currently contain a `LICENSE` file, so a project license should be chosen before publishing the repository or distributing binaries
 
@@ -135,6 +150,10 @@ read_timeout_ms = 100
 ```
 
 Offline-only builds can still run the deterministic offline pipeline with `--config config.ini --offline-input input.pcap`, but they do not support `--list-interfaces` or live capture. Offline-only builds and offline mode do not require the Npcap runtime.
+
+## Future Work
+
+A future cross-toolchain improvement could replace direct libpcap imports with a small runtime-loaded Npcap API wrapper based on `LoadLibrary` and `GetProcAddress`, but that is intentionally out of scope for `v0.1.0`.
 
 ## Loopback Example
 

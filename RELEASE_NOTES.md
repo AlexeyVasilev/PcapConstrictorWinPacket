@@ -16,7 +16,8 @@ Initial Windows release of PcapConstrictorWinPacket.
 
 - Npcap runtime must be installed separately.
 - The binary package does not include Npcap.
-- If the Npcap runtime is missing, `--list-interfaces` and live capture should report that with a clear console error.
+- Graceful missing-Npcap runtime diagnostics are intended for the official MSVC release build.
+- If the Npcap runtime is missing, the MSVC release build should report that with a clear console error for `--list-interfaces` and live capture.
 
 ## Known Limitations
 
@@ -27,6 +28,7 @@ Initial Windows release of PcapConstrictorWinPacket.
 - No `Packet.dll` low-level backend.
 - No monitor mode.
 - No capture filter support yet.
+- Non-MSVC Npcap-enabled builds may fail before application startup if `wpcap.dll` or `Packet.dll` are unavailable in the Windows DLL search path.
 - Unsupported linktypes fail clearly.
 - TLS stream/bulk policies are not supported.
 - QUIC migration is not supported.
