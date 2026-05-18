@@ -2,6 +2,8 @@
 
 Initial Windows release of PcapConstrictorWinPacket.
 
+License: Apache-2.0
+
 ## Highlights
 
 - Windows live capture through Npcap/libpcap.

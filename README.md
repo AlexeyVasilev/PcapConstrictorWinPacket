@@ -103,7 +103,7 @@ PcapConstrictorWinPacket-v0.1.0-windows-x64.zip
   config.example.ini
   README.md
   CHANGELOG.md
-  LICENSE or license note
+  LICENSE
 ```
 
 Package notes:
@@ -114,7 +114,6 @@ Package notes:
 - in the MSVC release build, missing `wpcap.dll` or `Packet.dll` should be reported with a console error before `--list-interfaces` or live capture proceeds
 - non-MSVC Npcap-enabled builds may still fail before application startup if the Npcap DLLs are not discoverable by Windows
 - the Npcap SDK is not required for users of the prebuilt binary package
-- this repository does not currently contain a `LICENSE` file, so a project license should be chosen before publishing the repository or distributing binaries
 
 ## Quick Start
 
@@ -207,6 +206,8 @@ Golden fixtures under `tests/fixtures/golden/` are kept for offline compatibilit
 
 ## Release Notes
 
-See [RELEASE_NOTES.md](C:/My2/Projects/C++/PcapConstrictorWinPacket/PcapConstrictorWinPacket/RELEASE_NOTES.md) for the `v0.1.0` release notes and [CHANGELOG.md](C:/My2/Projects/C++/PcapConstrictorWinPacket/PcapConstrictorWinPacket/CHANGELOG.md) for the project change summary.
+See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the `v0.1.0` release notes and [CHANGELOG.md](CHANGELOG.md) for the project change summary.
 
-`LICENSE` is currently missing in this repository. A license must be chosen before publishing the repository or distributing binaries.
+## License
+
+PcapConstrictorWinPacket is licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.

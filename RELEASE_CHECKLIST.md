@@ -12,7 +12,7 @@
 - Verify missing-Npcap runtime behavior on the MSVC release binary.
 - Open output PCAP in Wireshark.
 - Create zip without Npcap files.
+- Verify LICENSE is included in the release zip.
 - Attach zip to GitHub release.
 - Do not use a MinGW Npcap-enabled build as the official binary unless missing-runtime behavior is retested and documented.
 - State Npcap runtime requirement in release notes.
-- Choose and include a project license before publishing or distributing binaries.
