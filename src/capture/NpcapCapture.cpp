@@ -100,7 +100,7 @@ std::chrono::milliseconds PollInterval(const std::uint32_t read_timeout_ms) noex
         return std::chrono::milliseconds(10);
     }
 
-    return std::chrono::milliseconds(std::min<std::uint32_t>(read_timeout_ms, 100U));
+    return std::chrono::milliseconds((std::min<std::uint32_t>)(read_timeout_ms, 100U));
 }
 
 void AppendWarning(std::string& warning, std::string message) {
@@ -137,7 +137,7 @@ NpcapCaptureRunResult NpcapCapture::Run(const PolicyConfig& policy_config,
 
 #if PCAP_CONSTRICTOR_WINPACKET_HAS_NPCAP
     const std::uint32_t output_snaplen =
-        std::min(config_.default_snaplen, config_.max_capture_len);
+        (std::min)(config_.default_snaplen, config_.max_capture_len);
 
     char error_buffer[PCAP_ERRBUF_SIZE] = {};
     const int snaplen = static_cast<int>(output_snaplen);

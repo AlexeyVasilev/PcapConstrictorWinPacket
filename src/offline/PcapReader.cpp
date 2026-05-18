@@ -86,10 +86,14 @@ std::chrono::system_clock::time_point PcapPacketRecord::timestamp(
     const PcapTimePrecision precision) const noexcept {
     const auto seconds = std::chrono::seconds(ts_sec);
     if (precision == PcapTimePrecision::Nanosecond) {
-        return std::chrono::system_clock::time_point(seconds + std::chrono::nanoseconds(ts_fraction));
+        return std::chrono::system_clock::time_point{
+            std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                seconds + std::chrono::nanoseconds(ts_fraction))};
     }
 
-    return std::chrono::system_clock::time_point(seconds + std::chrono::microseconds(ts_fraction));
+    return std::chrono::system_clock::time_point{
+        std::chrono::duration_cast<std::chrono::system_clock::duration>(
+            seconds + std::chrono::microseconds(ts_fraction))};
 }
 
 void PcapReader::Clear() {
