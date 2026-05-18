@@ -13,6 +13,7 @@ int RunQuicConstrictorTests();
 int RunTlsConstrictorTests();
 int RunGoldenOfflineWorkflowTests();
 int RunNpcapInterfaceListTests();
+int RunNpcapRuntimeTests();
 
 int main() {
     int failures = 0;
@@ -30,6 +31,7 @@ int main() {
     failures += RunTlsConstrictorTests();
     failures += RunGoldenOfflineWorkflowTests();
     failures += RunNpcapInterfaceListTests();
+    failures += RunNpcapRuntimeTests();
 
     if (failures == 0) {
         std::cout << "All tests passed." << std::endl;

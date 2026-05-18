@@ -8,6 +8,7 @@
 - Run live real-adapter smoke.
 - Run loopback smoke.
 - Run `Ctrl+C` smoke.
+- Verify that missing Npcap runtime is reported with a console error.
 - Open output PCAP in Wireshark.
 - Create zip without Npcap files.
 - Attach zip to GitHub release.

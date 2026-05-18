@@ -6,6 +6,7 @@
 #include "capture/LiveCaptureReporting.hpp"
 #include "capture/NpcapCapture.hpp"
 #include "capture/NpcapInterfaceList.hpp"
+#include "capture/NpcapRuntime.hpp"
 #include "config/ConfigLoader.hpp"
 #include "offline/OfflinePacketFeed.hpp"
 #include "stats/CaptureStats.hpp"
@@ -102,7 +103,26 @@ int RunUnavailableLiveCaptureMessage() {
     return 1;
 }
 
+int RunMissingNpcapRuntimeMessage(const NpcapRuntimeCheck& runtime_check) {
+    std::cerr << runtime_check.message;
+    if (runtime_check.message.empty() || runtime_check.message.back() != '\n') {
+        std::cerr << '\n';
+    }
+    return 1;
+}
+
 int RunListInterfaces() {
+    if (!HasNpcapInterfaceListingSupport()) {
+        const NpcapInterfaceListResult result = ListNpcapInterfaces();
+        std::cerr << "Npcap interface listing error: " << result.error << '\n';
+        return 1;
+    }
+
+    const NpcapRuntimeCheck runtime_check = CheckNpcapRuntimeAvailable();
+    if (!runtime_check.available) {
+        return RunMissingNpcapRuntimeMessage(runtime_check);
+    }
+
     const NpcapInterfaceListResult result = ListNpcapInterfaces();
     if (!result) {
         std::cerr << "Npcap interface listing error: " << result.error << '\n';
@@ -121,6 +141,11 @@ int RunListInterfaces() {
 int RunLiveCapture(const PolicyConfig& config) {
     if (!NpcapCapture::HasSupport()) {
         return RunUnavailableLiveCaptureMessage();
+    }
+
+    const NpcapRuntimeCheck runtime_check = CheckNpcapRuntimeAvailable();
+    if (!runtime_check.available) {
+        return RunMissingNpcapRuntimeMessage(runtime_check);
     }
 
     if (config.capture.interface.empty()) {

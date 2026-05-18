@@ -44,6 +44,8 @@ Requirements for the Windows x64 prebuilt binary package:
 
 The prebuilt package does not include Npcap. The Npcap runtime is required to use `--list-interfaces` and live capture in an Npcap-enabled build.
 
+If the Npcap runtime DLLs are missing, `--list-interfaces` and live capture should print a clear console error explaining that `wpcap.dll` and `Packet.dll` could not be loaded and that the Npcap runtime must be installed separately.
+
 ## Build From Source
 
 Requirements for building from source:
@@ -95,6 +97,7 @@ Package notes:
 - the package does not include Npcap
 - install Npcap from the official Npcap website before using `--list-interfaces` or live capture
 - if Npcap is missing, `--list-interfaces` and live capture will not work in an Npcap-enabled build
+- if the Npcap runtime DLLs are missing, the program should report that with a console error instead of failing silently
 - the Npcap SDK is not required for users of the prebuilt binary package
 - this repository does not currently contain a `LICENSE` file, so a project license should be chosen before publishing the repository or distributing binaries
 
@@ -131,7 +134,7 @@ duration_sec = 30
 read_timeout_ms = 100
 ```
 
-Offline-only builds can still run the deterministic offline pipeline with `--config config.ini --offline-input input.pcap`, but they do not support `--list-interfaces` or live capture.
+Offline-only builds can still run the deterministic offline pipeline with `--config config.ini --offline-input input.pcap`, but they do not support `--list-interfaces` or live capture. Offline-only builds and offline mode do not require the Npcap runtime.
 
 ## Loopback Example
 

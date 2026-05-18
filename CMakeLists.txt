@@ -61,6 +61,7 @@ endif()
 add_library(PcapConstrictorWinPacketCore STATIC
     src/capture/LiveCaptureReporting.cpp
     src/capture/NpcapInterfaceListFormatting.cpp
+    src/capture/NpcapRuntime.cpp
     src/config/ConfigLoader.cpp
     src/decode/PacketDecode.cpp
     src/offline/OfflinePacketFeed.cpp
@@ -104,6 +105,19 @@ if(PCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING)
             ${NPCAP_PACKET_LIB}
             Ws2_32
     )
+
+    if(MSVC)
+        target_link_options(PcapConstrictorWinPacket PRIVATE
+            "/DELAYLOAD:wpcap.dll"
+            "/DELAYLOAD:Packet.dll"
+        )
+        target_link_libraries(PcapConstrictorWinPacket PRIVATE delayimp)
+    elseif(WIN32)
+        # TODO: Add an equivalent lazy Npcap runtime loading strategy for non-MSVC
+        # Windows toolchains. v0.1.0 release hardening currently relies on MSVC
+        # delay-load support so the executable can reach main() before touching
+        # wpcap.dll/Packet.dll.
+    endif()
 endif()
 
 target_link_libraries(PcapConstrictorWinPacket
@@ -120,6 +134,7 @@ add_executable(PcapConstrictorWinPacketTests
     tests/LivePolicyQuicTests.cpp
     tests/LivePolicySmokeTests.cpp
     tests/NpcapInterfaceListTests.cpp
+    tests/NpcapRuntimeTests.cpp
     tests/OfflinePacketFeedTests.cpp
     tests/PacketDecodeTests.cpp
     tests/PcapReaderTests.cpp

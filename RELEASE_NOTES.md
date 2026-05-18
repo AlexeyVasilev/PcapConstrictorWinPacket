@@ -15,6 +15,8 @@ Initial Windows release of PcapConstrictorWinPacket.
 ## Runtime Requirement
 
 - Npcap runtime must be installed separately.
+- The binary package does not include Npcap.
+- If the Npcap runtime is missing, `--list-interfaces` and live capture should report that with a clear console error.
 
 ## Known Limitations
 
