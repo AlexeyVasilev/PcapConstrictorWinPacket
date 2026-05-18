@@ -150,6 +150,7 @@ int RunLiveCapture(const PolicyConfig& config) {
     const std::string summary = FormatLiveCaptureSummary(
         result.termination_reason,
         result.stats,
+        result.driver_stats,
         result.elapsed_seconds,
         config.capture.output,
         config.capture.promiscuous);

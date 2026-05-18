@@ -103,6 +103,20 @@ std::chrono::milliseconds PollInterval(const std::uint32_t read_timeout_ms) noex
     return std::chrono::milliseconds(std::min<std::uint32_t>(read_timeout_ms, 100U));
 }
 
+void AppendWarning(std::string& warning, std::string message) {
+    if (message.empty()) {
+        return;
+    }
+
+    if (warning.empty()) {
+        warning = std::move(message);
+        return;
+    }
+
+    warning += "\n";
+    warning += message;
+}
+
 }  // namespace
 
 NpcapCapture::NpcapCapture(PolicyConfig::CaptureOptions config) noexcept
@@ -161,13 +175,8 @@ NpcapCaptureRunResult NpcapCapture::Run(const PolicyConfig& policy_config,
         pcap_setnonblock(handle, 1, nonblock_error_buffer) == 0;
     if (!nonblocking_mode_enabled &&
         nonblock_error_buffer[0] != '\0') {
-        if (result.warning.empty()) {
-            result.warning = std::string("pcap_setnonblock(1) warning: ") + nonblock_error_buffer;
-        } else {
-            result.warning += "\n";
-            result.warning += "pcap_setnonblock(1) warning: ";
-            result.warning += nonblock_error_buffer;
-        }
+        AppendWarning(result.warning,
+                      std::string("pcap_setnonblock(1) warning: ") + nonblock_error_buffer);
     }
 
 #if defined(_WIN32)
@@ -176,13 +185,8 @@ NpcapCaptureRunResult NpcapCapture::Run(const PolicyConfig& policy_config,
     if (pcap_setmintocopy(handle, 0) != 0) {
         const char* handle_error = pcap_geterr(handle);
         if (handle_error != nullptr && handle_error[0] != '\0') {
-            if (result.warning.empty()) {
-                result.warning = std::string("pcap_setmintocopy(0) warning: ") + handle_error;
-            } else {
-                result.warning += "\n";
-                result.warning += "pcap_setmintocopy(0) warning: ";
-                result.warning += handle_error;
-            }
+            AppendWarning(result.warning,
+                          std::string("pcap_setmintocopy(0) warning: ") + handle_error);
         }
     }
 #endif
@@ -301,6 +305,26 @@ NpcapCaptureRunResult NpcapCapture::Run(const PolicyConfig& policy_config,
     if (StopRequested(stop_requested) &&
         result.termination_reason == LiveCaptureTerminationReason::Stopped) {
         result.termination_reason = LiveCaptureTerminationReason::Interrupted;
+    }
+
+    pcap_stat raw_driver_stats{};
+    if (pcap_stats(handle, &raw_driver_stats) == 0) {
+        result.driver_stats.available = true;
+        result.driver_stats.received_by_driver =
+            static_cast<std::uint32_t>(raw_driver_stats.ps_recv);
+        result.driver_stats.dropped_by_driver_or_os =
+            static_cast<std::uint32_t>(raw_driver_stats.ps_drop);
+        result.driver_stats.dropped_by_interface =
+            static_cast<std::uint32_t>(raw_driver_stats.ps_ifdrop);
+    } else {
+        const char* handle_error = pcap_geterr(handle);
+        std::string message = "pcap_stats warning: unavailable";
+        if (handle_error != nullptr && handle_error[0] != '\0') {
+            message += " (";
+            message += handle_error;
+            message += ")";
+        }
+        AppendWarning(result.warning, std::move(message));
     }
 
     result.stats.bytes_saved = result.stats.bytes_input - result.stats.bytes_output;

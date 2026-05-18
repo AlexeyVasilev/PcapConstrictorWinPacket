@@ -39,9 +39,16 @@ int RunLiveCaptureReportingTests() {
     stats.tls_appdata_constricted = 8U;
     stats.quic_short_constricted = 3U;
 
+    NpcapDriverStats driver_stats;
+    driver_stats.available = true;
+    driver_stats.received_by_driver = 12345U;
+    driver_stats.dropped_by_driver_or_os = 4U;
+    driver_stats.dropped_by_interface = 1U;
+
     const std::string summary = FormatLiveCaptureSummary(
         LiveCaptureTerminationReason::MaxPacketsReached,
         stats,
+        driver_stats,
         1.25,
         "live-test.pcap",
         false);
@@ -77,6 +84,10 @@ int RunLiveCaptureReportingTests() {
     if (summary.find("quic_short_constricted: 3") == std::string::npos) {
         return Fail("summary should include quic counter");
     }
+    if (summary.find("Npcap/libpcap stats:\n  ps_recv: 12345\n  ps_drop: 4\n  ps_ifdrop: 1") ==
+        std::string::npos) {
+        return Fail("summary should include Npcap/libpcap stats separately");
+    }
     if (startup.find("promiscuous: enabled") == std::string::npos) {
         return Fail("startup summary should include promiscuous mode");
     }
@@ -86,6 +97,21 @@ int RunLiveCaptureReportingTests() {
     if (startup.find("max_packets: 100") == std::string::npos ||
         startup.find("duration_sec: 10") == std::string::npos) {
         return Fail("startup summary should include configured limits");
+    }
+
+    const std::string unavailable_summary = FormatLiveCaptureSummary(
+        LiveCaptureTerminationReason::Interrupted,
+        stats,
+        NpcapDriverStats{},
+        2.5,
+        "loopback-test.pcap",
+        true);
+    if (unavailable_summary.find("Npcap/libpcap stats: unavailable") == std::string::npos) {
+        return Fail("summary should report unavailable Npcap/libpcap stats");
+    }
+    if (unavailable_summary.find("packets_seen: 100") == std::string::npos ||
+        unavailable_summary.find("ps_recv:") != std::string::npos) {
+        return Fail("application counters and unavailable Npcap stats should stay separate");
     }
 
     return 0;

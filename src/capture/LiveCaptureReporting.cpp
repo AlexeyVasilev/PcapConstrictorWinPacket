@@ -68,6 +68,7 @@ std::string FormatLiveCaptureStartupSummary(const std::string_view interface_nam
 
 std::string FormatLiveCaptureSummary(const LiveCaptureTerminationReason reason,
                                      const CaptureStats& stats,
+                                     const NpcapDriverStats& driver_stats,
                                      const double elapsed_seconds,
                                      const std::filesystem::path& output_path,
                                      const bool promiscuous) {
@@ -85,6 +86,16 @@ std::string FormatLiveCaptureSummary(const LiveCaptureTerminationReason reason,
            << "receive_errors: " << stats.receive_errors << '\n'
            << "tls_appdata_constricted: " << stats.tls_appdata_constricted << '\n'
            << "quic_short_constricted: " << stats.quic_short_constricted << '\n';
+
+    if (driver_stats.available) {
+        output << "Npcap/libpcap stats:\n"
+               << "  ps_recv: " << driver_stats.received_by_driver << '\n'
+               << "  ps_drop: " << driver_stats.dropped_by_driver_or_os << '\n'
+               << "  ps_ifdrop: " << driver_stats.dropped_by_interface << '\n';
+    } else {
+        output << "Npcap/libpcap stats: unavailable\n";
+    }
+
     return output.str();
 }
 

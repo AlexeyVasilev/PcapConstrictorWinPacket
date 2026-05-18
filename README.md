@@ -81,6 +81,14 @@ read_timeout_ms = 100
 - Loopback capture does not meaningfully use promiscuous mode.
 - Depending on the Npcap installation mode, live capture and promiscuous capture may require administrator privileges.
 
+## Capture Statistics And Drops
+
+- The final live summary includes application counters and a separate `Npcap/libpcap stats` section.
+- `ps_drop` can indicate packets dropped before delivery to the application.
+- `ps_ifdrop` may be unavailable or backend-dependent.
+- Exact `pcap_stats` semantics are platform-dependent and should not be treated as identical to the application-level packet counts.
+- High drop counts can suggest lowering traffic volume, improving capture performance, using a narrower capture setup, or reducing processing overhead.
+
 ## Config
 
 See `config.example.ini`.

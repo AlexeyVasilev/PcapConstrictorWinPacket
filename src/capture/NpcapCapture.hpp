@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 
+#include "capture/NpcapDriverStats.hpp"
 #include "capture/LiveCaptureReporting.hpp"
 #include "policy/PolicyConfig.hpp"
 #include "stats/CaptureStats.hpp"
@@ -13,6 +14,7 @@ namespace pcap_constrictor_winpacket {
 
 struct NpcapCaptureRunResult {
     CaptureStats stats{};
+    NpcapDriverStats driver_stats{};
     std::string error{};
     std::string warning{};
     LiveCaptureTerminationReason termination_reason{LiveCaptureTerminationReason::Stopped};

@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 
+#include "capture/NpcapDriverStats.hpp"
 #include "capture/PcapLinkType.hpp"
 #include "stats/CaptureStats.hpp"
 
@@ -36,6 +37,7 @@ enum class LiveCaptureTerminationReason {
 [[nodiscard]] std::string FormatLiveCaptureSummary(
     LiveCaptureTerminationReason reason,
     const CaptureStats& stats,
+    const NpcapDriverStats& driver_stats,
     double elapsed_seconds,
     const std::filesystem::path& output_path,
     bool promiscuous);
