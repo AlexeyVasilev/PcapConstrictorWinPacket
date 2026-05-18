@@ -34,14 +34,27 @@ PcapConstrictorWinPacket --config config.ini --offline-input input.pcap
 
 `--list-interfaces` enumerates interfaces through Npcap/libpcap so you can copy an adapter name into the config.
 
-## Build
+## Runtime Requirements For Prebuilt Binary
 
-Requirements for Windows live capture builds:
+Requirements for the Windows x64 prebuilt binary package:
+
+- Windows x64
+- Npcap runtime installed separately
+- administrator privileges may be required depending on Npcap installation options
+
+The prebuilt package does not include Npcap. The Npcap runtime is required to use `--list-interfaces` and live capture in an Npcap-enabled build.
+
+## Build From Source
+
+Requirements for building from source:
 
 - C++20 compiler
 - CMake
-- Npcap runtime installed
-- Npcap SDK available and passed through `NPCAP_SDK_DIR`
+- Npcap SDK available and passed through `NPCAP_SDK_DIR` for live-capture builds
+
+The Npcap SDK is only needed to build from source. It is not needed just to run a prebuilt binary.
+
+If `NPCAP_SDK_DIR` is provided, the resulting build can include `--list-interfaces` and live capture support. The Npcap runtime must still be installed on the machine where that binary is used.
 
 Example:
 
@@ -53,7 +66,9 @@ cmake --build build --config Release
 Offline-only builds are also supported:
 
 - offline tools and offline compatibility workflows can build without `NPCAP_SDK_DIR`
-- `--list-interfaces` and live capture require Npcap support at build time
+- when `NPCAP_SDK_DIR` is missing, CMake can fall back to an offline-only build
+- offline-only builds do not provide `--list-interfaces` or live capture
+- offline compatibility workflows can still run without live Npcap support if built that way
 
 If you want an offline-only build explicitly:
 
@@ -62,7 +77,30 @@ cmake -S . -B build -DPCAP_CONSTRICTOR_WINPACKET_ENABLE_NPCAP_INTERFACE_LISTING=
 cmake --build build --config Release
 ```
 
+## Prebuilt Binary Package
+
+Expected release artifact layout:
+
+```text
+PcapConstrictorWinPacket-v0.1.0-windows-x64.zip
+  PcapConstrictorWinPacket.exe
+  config.example.ini
+  README.md
+  CHANGELOG.md
+  LICENSE or license note
+```
+
+Package notes:
+
+- the package does not include Npcap
+- install Npcap from the official Npcap website before using `--list-interfaces` or live capture
+- if Npcap is missing, `--list-interfaces` and live capture will not work in an Npcap-enabled build
+- the Npcap SDK is not required for users of the prebuilt binary package
+- this repository does not currently contain a `LICENSE` file, so a project license should be chosen before publishing the repository or distributing binaries
+
 ## Quick Start
+
+For an Npcap-enabled build or prebuilt binary with the Npcap runtime installed:
 
 1. List interfaces:
 
@@ -70,7 +108,7 @@ cmake --build build --config Release
 PcapConstrictorWinPacket.exe --list-interfaces
 ```
 
-2. Copy an interface name into `config.ini`.
+2. Copy `config.example.ini` to `config.ini`, then copy an interface name into it.
 
 3. Run a bounded capture:
 
@@ -89,9 +127,11 @@ promiscuous = true
 default_snaplen = 65535
 max_capture_len = 65535
 max_packets = 1000
-duration_sec = 0
+duration_sec = 30
 read_timeout_ms = 100
 ```
+
+Offline-only builds can still run the deterministic offline pipeline with `--config config.ini --offline-input input.pcap`, but they do not support `--list-interfaces` or live capture.
 
 ## Loopback Example
 
@@ -137,18 +177,7 @@ Loopback capture is useful when you want to inspect traffic between processes on
 
 ## Verification Checklist
 
-Manual smoke checks for `v0.1.0`:
-
-- `--help` works
-- `--list-interfaces` works
-- offline input produces an output PCAP
-- capture from a real adapter produces an output PCAP
-- loopback capture produces an output PCAP
-- `Ctrl+C` finalizes output cleanly
-- `max_packets` stops capture
-- `duration_sec` stops capture
-- output opens in Wireshark
-- final summary shows packets/bytes and Npcap/libpcap stats
+See [RELEASE_CHECKLIST.md](C:/My2/Projects/C++/PcapConstrictorWinPacket/PcapConstrictorWinPacket/RELEASE_CHECKLIST.md) for the `v0.1.0` packaging and smoke-test checklist.
 
 ## Testing
 
@@ -156,6 +185,6 @@ Golden fixtures under `tests/fixtures/golden/` are kept for offline compatibilit
 
 ## Release Notes
 
-See [CHANGELOG.md](C:/My2/Projects/C++/PcapConstrictorWinPacket/PcapConstrictorWinPacket/CHANGELOG.md) for the initial release summary.
+See [RELEASE_NOTES.md](C:/My2/Projects/C++/PcapConstrictorWinPacket/PcapConstrictorWinPacket/RELEASE_NOTES.md) for the `v0.1.0` release notes and [CHANGELOG.md](C:/My2/Projects/C++/PcapConstrictorWinPacket/PcapConstrictorWinPacket/CHANGELOG.md) for the project change summary.
 
 `LICENSE` is currently missing in this repository. A license must be chosen before publishing the repository or distributing binaries.
