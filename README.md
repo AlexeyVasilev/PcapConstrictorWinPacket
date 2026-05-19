@@ -224,6 +224,6 @@ See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the `v0.1.0` release notes and [CHA
 
 ## License
 
-PcapConstrictorWinPacket is licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
+Apache License 2.0. See [LICENSE](LICENSE).
 
 Copyright 2026 Alexey Vasilev.
