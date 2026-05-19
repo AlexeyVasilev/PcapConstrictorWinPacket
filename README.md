@@ -4,6 +4,16 @@ PcapConstrictorWinPacket is the practical Windows live recorder in the PcapConst
 
 Compared with the main PcapConstrictor offline tool, PcapConstrictorWinPacket intentionally supports a smaller policy surface. In `v0.1.0` it supports TLS Application Data constriction with `tls.app_data_continuation_policy = final_only` and QUIC known-DCID short-header constriction, but it does not support TLS stream or bulk continuation policies, PCAPNG output, or TLS/QUIC decryption.
 
+## Latest Release
+
+The first published release is `v0.1.0`.
+
+Download the Windows x64 package from the [GitHub Releases page](https://github.com/AlexeyVasilev/PcapConstrictorWinPacket/releases/tag/v0.1.0):
+
+`PcapConstrictorWinPacket-v0.1.0-windows-x64.zip`
+
+The package contains the executable, example config, README, changelog, release notes, and Apache-2.0 license. It does not include Npcap; install the Npcap runtime separately before using live capture.
+
 ## Project Family
 
 | Project | Role | Use when |
@@ -15,7 +25,7 @@ Compared with the main PcapConstrictor offline tool, PcapConstrictorWinPacket in
 
 ## Current Status
 
-This repository is prepared for an initial `v0.1.0` release with:
+`v0.1.0` is the first published release. It provides:
 
 - practical Windows live capture through Npcap/libpcap
 - offline PCAP compatibility mode
@@ -57,7 +67,7 @@ Requirements for the Windows x64 prebuilt binary package:
 
 The prebuilt package does not include Npcap. The Npcap runtime is required to use `--list-interfaces` and live capture in an Npcap-enabled build.
 
-The official `v0.1.0` Windows x64 prebuilt binary should be built with MSVC. In that release configuration, the executable uses delay-load for `wpcap.dll` and `Packet.dll`, so `--help` and offline mode can still start when the Npcap runtime DLLs are missing, and `--list-interfaces` or live capture can print a clear console error explaining that the Npcap runtime must be installed separately.
+The official `v0.1.0` Windows x64 prebuilt binary is built with MSVC. In that release configuration, the executable uses delay-load for `wpcap.dll` and `Packet.dll`, so `--help` and offline mode can still start when the Npcap runtime DLLs are missing, and `--list-interfaces` or live capture can print a clear console error explaining that the Npcap runtime must be installed separately.
 
 ## Build From Source
 
@@ -108,7 +118,7 @@ cmake --build build --config Release
 
 ## Prebuilt Binary Package
 
-Expected release artifact layout:
+The published `v0.1.0` Windows x64 package contains:
 
 ```text
 PcapConstrictorWinPacket-v0.1.0-windows-x64.zip
@@ -116,6 +126,7 @@ PcapConstrictorWinPacket-v0.1.0-windows-x64.zip
   config.example.ini
   README.md
   CHANGELOG.md
+  RELEASE_NOTES.md
   LICENSE
 ```
 
@@ -124,7 +135,7 @@ Package notes:
 - the package does not include Npcap
 - the package should not bundle or redistribute Npcap
 - install Npcap from the official Npcap website before using `--list-interfaces` or live capture
-- the official `v0.1.0` package should be built with MSVC x64
+- the official `v0.1.0` package is built with MSVC x64
 - in the MSVC release build, missing `wpcap.dll` or `Packet.dll` should be reported with a console error before `--list-interfaces` or live capture proceeds
 - non-MSVC Npcap-enabled builds may still fail before application startup if the Npcap DLLs are not discoverable by Windows
 - the Npcap SDK is not required for users of the prebuilt binary package
