@@ -2,9 +2,9 @@
 
 ## v0.1.0 - Initial release
 
-- Added Windows live capture through Npcap/libpcap.
+- Added practical Windows live capture through Npcap/libpcap.
 - Added interface listing.
-- Added Ethernet `DLT_EN10MB` support.
+- Added classic PCAP output with Ethernet `DLT_EN10MB` support.
 - Added Npcap loopback `DLT_NULL` support.
 - Added offline PCAP compatibility mode.
 - Added TLS Application Data constriction with `final_only` continuation behavior.

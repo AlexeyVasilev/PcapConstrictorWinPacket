@@ -12,6 +12,8 @@
 - Verify missing-Npcap runtime behavior on the MSVC release binary.
 - Open output PCAP in Wireshark.
 - Create zip without Npcap files.
+- Confirm release notes and README describe WinPacket as the practical Windows Npcap/libpcap live recorder.
+- Confirm release docs say TLS `final_only` is supported and TLS stream/bulk are unsupported.
 - Verify LICENSE is included in the release zip.
 - Attach zip to GitHub release.
 - Do not use a MinGW Npcap-enabled build as the official binary unless missing-runtime behavior is retested and documented.

@@ -1,12 +1,23 @@
 # PcapConstrictorWinPacket
 
-PcapConstrictorWinPacket is a Windows live PCAP recorder that uses Npcap/libpcap to capture traffic, then reduces encrypted TLS and QUIC payload bytes while preserving enough packet structure for analysis in tools such as Wireshark. It is based on the policy architecture of PcapConstrictorAFPacket and PcapConstrictor, and it writes classic PCAP output.
+PcapConstrictorWinPacket is the practical Windows live recorder in the PcapConstrictor project family. It uses Npcap/libpcap to capture traffic, then reduces encrypted TLS and QUIC payload bytes while preserving enough packet structure for analysis in tools such as Wireshark. It is similar in role and policy scope to PcapConstrictorAFPacket, but for Windows, and it writes classic PCAP output.
+
+Compared with the main PcapConstrictor offline tool, PcapConstrictorWinPacket intentionally supports a smaller policy surface. In `v0.1.0` it supports TLS Application Data constriction with `tls.app_data_continuation_policy = final_only` and QUIC known-DCID short-header constriction, but it does not support TLS stream or bulk continuation policies, PCAPNG output, or TLS/QUIC decryption.
+
+## Project Family
+
+| Project | Role | Use when |
+|---|---|---|
+| [PcapConstrictor](https://github.com/AlexeyVasilev/PcapConstrictor) | Main offline PCAP/PCAPNG constriction tool | You already have capture files and want the richest policy support, including TLS final_only/stream/bulk, QUIC, PCAPNG, reinflate/restore, checksum policies, stats, and decision logs. |
+| [PcapConstrictorAFPacket](https://github.com/AlexeyVasilev/PcapConstrictorAFPacket) | Linux AF_PACKET live recorder | You want practical Linux live capture with userspace PcapConstrictor-style policy. Supports TLS final_only and QUIC CID-aware short-header constriction, but not TLS stream/bulk. |
+| [PcapConstrictorWinPacket](https://github.com/AlexeyVasilev/PcapConstrictorWinPacket) | Windows Npcap/libpcap live recorder | You want practical Windows live capture with Npcap and similar policy scope to AFPacket. Supports TLS final_only and QUIC known-DCID constriction, but not TLS stream/bulk. |
+| [PcapConstrictorBPF](https://github.com/AlexeyVasilev/PcapConstrictorBPF) | Experimental Linux TC eBPF recorder | You want a research eBPF project demonstrating TC hooks, BPF maps, verifier-friendly parsing, and a much smaller live-capture policy subset. |
 
 ## Current Status
 
 This repository is prepared for an initial `v0.1.0` release with:
 
-- live capture on Windows through Npcap/libpcap
+- practical Windows live capture through Npcap/libpcap
 - offline PCAP compatibility mode
 - Ethernet `DLT_EN10MB` support
 - Npcap loopback `DLT_NULL` support
@@ -33,6 +44,8 @@ PcapConstrictorWinPacket --config config.ini --offline-input input.pcap
 `--config config.ini` runs live capture when Npcap support is compiled in.
 
 `--list-interfaces` enumerates interfaces through Npcap/libpcap so you can copy an adapter name into the config.
+
+Offline mode remains available through `--config config.ini --offline-input input.pcap` and does not require live Npcap capture support.
 
 ## Runtime Requirements For Prebuilt Binary
 
@@ -109,6 +122,7 @@ PcapConstrictorWinPacket-v0.1.0-windows-x64.zip
 Package notes:
 
 - the package does not include Npcap
+- the package should not bundle or redistribute Npcap
 - install Npcap from the official Npcap website before using `--list-interfaces` or live capture
 - the official `v0.1.0` package should be built with MSVC x64
 - in the MSVC release build, missing `wpcap.dll` or `Packet.dll` should be reported with a console error before `--list-interfaces` or live capture proceeds
@@ -184,7 +198,7 @@ Loopback capture is useful when you want to inspect traffic between processes on
 ## Limitations
 
 - Windows-oriented project
-- requires Npcap for live capture
+- requires Npcap runtime for live capture and `--list-interfaces`
 - classic PCAP output only
 - no pcapng output
 - no TLS or QUIC decryption
@@ -198,7 +212,7 @@ Loopback capture is useful when you want to inspect traffic between processes on
 
 ## Verification Checklist
 
-See [RELEASE_CHECKLIST.md](C:/My2/Projects/C++/PcapConstrictorWinPacket/PcapConstrictorWinPacket/RELEASE_CHECKLIST.md) for the `v0.1.0` packaging and smoke-test checklist.
+See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the `v0.1.0` packaging and smoke-test checklist.
 
 ## Testing
 
@@ -211,3 +225,5 @@ See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the `v0.1.0` release notes and [CHA
 ## License
 
 PcapConstrictorWinPacket is licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
+
+Copyright 2026 Alexey Vasilev.
